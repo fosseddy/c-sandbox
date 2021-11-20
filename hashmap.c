@@ -21,13 +21,13 @@ struct Slot {
     void *value;
 };
 
-struct Hash_Table {
+struct Hash_Map {
     size_t size;
     size_t cap;
     struct Slot **slots;
 };
 
-static void hashtable_resize(struct Hash_Table *t)
+static void hashmap_resize(struct Hash_Map *t)
 {
     assert(t->cap > 0);
 
@@ -43,9 +43,9 @@ static void hashtable_resize(struct Hash_Table *t)
     t->slots = slots;
 }
 
-struct Hash_Table *make_hashtable()
+struct Hash_Map *make_hashmap()
 {
-    struct Hash_Table *t = malloc(sizeof(struct Hash_Table));
+    struct Hash_Map *t = malloc(sizeof(struct Hash_Map));
     assert(t != NULL);
 
     t->size = 0;
@@ -57,11 +57,15 @@ struct Hash_Table *make_hashtable()
     return t;
 }
 
-void free_hashtable(struct Hash_Table *t)
+void free_hashmap(struct Hash_Map *t)
 {
     for (size_t i = 0; i < t->cap; ++i) {
+        // @TODO: delete printf()'s
         if (t->slots[i] != NULL) {
+            printf("%s -- %s\n", t->slots[i]->key, (char *) t->slots[i]->value);
             free(t->slots[i]);
+        } else {
+            printf("%p\n", (void *) t->slots[i]);
         }
     }
 
@@ -69,12 +73,12 @@ void free_hashtable(struct Hash_Table *t)
     free(t);
 }
 
-void hashtable_insert(struct Hash_Table *t, const char *k, void *v)
+void hashmap_insert(struct Hash_Map *t, const char *k, void *v)
 {
     assert(t->size <= t->cap);
 
     if (t->size == t->cap) {
-        hashtable_resize(t);
+        hashmap_resize(t);
     }
 
     uint32_t hash = djb2((uint8_t *) k);
@@ -94,7 +98,7 @@ void hashtable_insert(struct Hash_Table *t, const char *k, void *v)
     t->size++;
 }
 
-void *hashtable_get(struct Hash_Table *t, const char *k)
+void *hashmap_get(struct Hash_Map *t, const char *k)
 {
     uint32_t hash = djb2((uint8_t *) k);
     int index = hash % t->cap;
@@ -111,22 +115,26 @@ void *hashtable_get(struct Hash_Table *t, const char *k)
 }
 
 int main() {
-    struct Hash_Table *t = make_hashtable();
-    hashtable_insert(t, "Test1", "1");
-    hashtable_insert(t, "Test2", "2");
-    hashtable_insert(t, "Test3", "3");
-    hashtable_insert(t, "Test4", "4");
-    hashtable_insert(t, "Test5", "5");
-    hashtable_insert(t, "Test6", "6");
-    hashtable_insert(t, "Test7", "7");
-    hashtable_insert(t, "Test8", "8");
-    hashtable_insert(t, "Test9", "9");
-    hashtable_insert(t, "Test10", "10");
-    hashtable_insert(t, "Test11", "11");
-    hashtable_insert(t, "Test12", "12");
-    hashtable_insert(t, "Test13", "13");
-    hashtable_insert(t, "Test14", "14");
+    struct Hash_Map *t = make_hashmap();
+    hashmap_insert(t, "Test1", "1");
+    hashmap_insert(t, "Test2", "2");
+    hashmap_insert(t, "Test3", "3");
+    hashmap_insert(t, "Test4", "4");
+    hashmap_insert(t, "Test5", "5");
+    hashmap_insert(t, "Test6", "6");
+    hashmap_insert(t, "Test7", "7");
+    hashmap_insert(t, "Test8", "8");
+    hashmap_insert(t, "Test9", "9");
+    hashmap_insert(t, "Test10", "10");
+    hashmap_insert(t, "Test11", "11");
+    hashmap_insert(t, "Test12", "12");
+    hashmap_insert(t, "Test13", "13");
+    hashmap_insert(t, "Test14", "14");
+    hashmap_insert(t, "Test15", "15");
+    hashmap_insert(t, "Test16", "16");
+    hashmap_insert(t, "Test17", "17");
+    hashmap_insert(t, "Test18", "18");
 
-    free_hashtable(t);
+    free_hashmap(t);
     return 0;
 }
