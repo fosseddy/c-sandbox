@@ -4,10 +4,10 @@
 #include <string.h>
 #include <assert.h>
 
-uint32_t djb2(uint8_t *str)
+static uint32_t djb2(uint8_t *str)
 {
     uint32_t hash = 5381;
-    int c;
+    size_t c;
 
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + c;
@@ -24,117 +24,115 @@ struct Slot {
 struct Hash_Map {
     size_t size;
     size_t cap;
-    struct Slot **slots;
+    struct Slot *slots;
 };
 
-static void hashmap_resize(struct Hash_Map *t)
+static void hashmap_debug(struct Hash_Map *hm)
 {
-    assert(t->cap > 0);
+    for (size_t i = 0; i < hm->cap; ++i) {
+        if (hm->slots[i].key != NULL) {
+            printf("%s -- %s\n", hm->slots[i].key, (char *) hm->slots[i].value);
+        } else {
+            printf("%p\n", hm->slots[i].key);
+        }
+    }
+}
 
-    t->cap *= 2;
-    struct Slot **slots = calloc(t->cap, sizeof(struct Slot));
+static void hashmap_resize(struct Hash_Map *hm)
+{
+    assert(hm->cap > 0);
+
+    hm->cap *= 2;
+
+    struct Slot *slots = calloc(hm->cap, sizeof(struct Slot));
     assert(slots != NULL);
 
-    for (size_t i = 0; i < t->size; ++i) {
-        slots[i] = t->slots[i];
+    for (size_t i = 0; i < hm->size; ++i) {
+        slots[i] = hm->slots[i];
     }
 
-    free(t->slots);
-    t->slots = slots;
+    free(hm->slots);
+    hm->slots = slots;
 }
 
 struct Hash_Map *make_hashmap()
 {
-    struct Hash_Map *t = malloc(sizeof(struct Hash_Map));
-    assert(t != NULL);
+    struct Hash_Map *hm = malloc(sizeof(struct Hash_Map));
+    assert(hm != NULL);
 
-    t->size = 0;
-    t->cap = 4;
+    hm->size = 0;
+    hm->cap = 4;
 
-    t->slots = calloc(t->cap, sizeof(struct Slot));
-    assert(t->slots != NULL);
+    hm->slots = calloc(hm->cap, sizeof(struct Slot));
+    assert(hm->slots != NULL);
 
-    return t;
+    return hm;
 }
 
-void free_hashmap(struct Hash_Map *t)
+void free_hashmap(struct Hash_Map *hm)
 {
-    for (size_t i = 0; i < t->cap; ++i) {
-        // @TODO: delete printf()'s
-        if (t->slots[i] != NULL) {
-            printf("%s -- %s\n", t->slots[i]->key, (char *) t->slots[i]->value);
-            free(t->slots[i]);
-        } else {
-            printf("%p\n", (void *) t->slots[i]);
-        }
-    }
-
-    free(t->slots);
-    free(t);
+    free(hm->slots);
+    free(hm);
 }
 
-void hashmap_insert(struct Hash_Map *t, const char *k, void *v)
+void hashmap_insert(struct Hash_Map *hm, const char *k, void *v)
 {
-    assert(t->size <= t->cap);
+    assert(hm->size <= hm->cap);
 
-    if (t->size == t->cap) {
-        hashmap_resize(t);
+    if (hm->size == hm->cap) {
+        hashmap_resize(hm);
     }
 
     uint32_t hash = djb2((uint8_t *) k);
-    int index = hash % t->cap;
+    size_t index = hash % hm->cap;
 
-    while (t->slots[index] != NULL) {
-        index = (index + 1) % t->cap;
+    while (hm->slots[index].key != NULL) {
+        index = (index + 1) % hm->cap;
     }
 
-    struct Slot *s = malloc(sizeof(struct Slot));
-    assert(s != NULL);
+    hm->slots[index].key = (char *) k;
+    hm->slots[index].value = v;
 
-    s->key = (char *) k;
-    s->value = v;
-
-    t->slots[index] = s;
-    t->size++;
+    hm->size++;
 }
 
-void *hashmap_get(struct Hash_Map *t, const char *k)
+void *hashmap_get(struct Hash_Map *hm, const char *k)
 {
     uint32_t hash = djb2((uint8_t *) k);
-    int index = hash % t->cap;
-
-    struct Slot *s = t->slots[index];
+    size_t index = hash % hm->cap;
 
     // @FIXME: infinite loop if slot does not exist
-    while (strcmp(s->key, k) != 0) {
-        index = (index + 1) % t->cap;
-        s = t->slots[index];
+    while (strcmp(hm->slots[index].key, k) != 0) {
+        index = (index + 1) % hm->cap;
     }
 
-    return s->value;
+    return hm->slots[index].value;
 }
 
 int main() {
-    struct Hash_Map *t = make_hashmap();
-    hashmap_insert(t, "Test1", "1");
-    hashmap_insert(t, "Test2", "2");
-    hashmap_insert(t, "Test3", "3");
-    hashmap_insert(t, "Test4", "4");
-    hashmap_insert(t, "Test5", "5");
-    hashmap_insert(t, "Test6", "6");
-    hashmap_insert(t, "Test7", "7");
-    hashmap_insert(t, "Test8", "8");
-    hashmap_insert(t, "Test9", "9");
-    hashmap_insert(t, "Test10", "10");
-    hashmap_insert(t, "Test11", "11");
-    hashmap_insert(t, "Test12", "12");
-    hashmap_insert(t, "Test13", "13");
-    hashmap_insert(t, "Test14", "14");
-    hashmap_insert(t, "Test15", "15");
-    hashmap_insert(t, "Test16", "16");
-    hashmap_insert(t, "Test17", "17");
-    hashmap_insert(t, "Test18", "18");
+    struct Hash_Map *hm = make_hashmap();
 
-    free_hashmap(t);
+    hashmap_insert(hm, "Test1", "1");
+    hashmap_insert(hm, "Test2", "2");
+    hashmap_insert(hm, "Test3", "3");
+    hashmap_insert(hm, "Test4", "4");
+    hashmap_insert(hm, "Test5", "5");
+    hashmap_insert(hm, "Test6", "6");
+    hashmap_insert(hm, "Test7", "7");
+    hashmap_insert(hm, "Test8", "8");
+    hashmap_insert(hm, "Test9", "9");
+    hashmap_insert(hm, "Test10", "10");
+    hashmap_insert(hm, "Test11", "11");
+    hashmap_insert(hm, "Test12", "12");
+    hashmap_insert(hm, "Test13", "13");
+    hashmap_insert(hm, "Test14", "14");
+    hashmap_insert(hm, "Test15", "15");
+    hashmap_insert(hm, "Test16", "16");
+    hashmap_insert(hm, "Test17", "17");
+
+    hashmap_debug(hm);
+
+    free_hashmap(hm);
+
     return 0;
 }
