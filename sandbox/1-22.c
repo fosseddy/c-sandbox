@@ -35,8 +35,8 @@ int main(void)
 
             int j = 0;
             int next_line_i = line_count + i + 1;
+            assert(next_line_i < LINES_CAP);
             while (lines[line_count + i][fold_i] != '\0') {
-                assert(next_line_i < LINES_CAP);
                 lines[next_line_i][j++] = lines[line_count + i][fold_i++];
             }
 
