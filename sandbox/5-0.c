@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <assert.h>
 
 void trim_left(char *, const char *);
 void trim_right(char *, const char *);
@@ -12,24 +13,16 @@ int main(void)
     char y[] = "    hello_arr  ";
     char z[21] = {0};
 
-    printf("x: #%s#\n", x);
     trim(z, x);
-    printf("x: #%s#\n", x);
-    printf("z: #%s#\n", z);
+    assert(strcmp(z, "hello_ptr") == 0);
+    assert(strcmp(x, "  hello_ptr       ") == 0);
 
-    printf("\n");
-
-    printf("y: #%s#\n", y);
     trim(z, y);
-    printf("y: #%s#\n", y);
-    printf("z: #%s#\n", z);
+    assert(strcmp(z, "hello_arr") == 0);
+    assert(strcmp(y, "    hello_arr  ") == 0);
 
-    printf("\n");
-
-    printf("y: #%s#\n", y);
     trim(y, y);
-    printf("y: #%s#\n", y);
-    printf("y: #%s#\n", y);
+    assert(strcmp(y, "hello_arr") == 0);
 
     return 0;
 }
@@ -42,10 +35,10 @@ void trim_left(char *d, const char *t)
 
 void trim_right(char *d, const char *t)
 {
-    int offset = strlen(t) - 1;
-    for (; isspace(t[offset]); --offset);
+    const char *t_end = t + strlen(t) - 1;
+    while (isspace(*t_end)) --t_end;
 
-    for (int i = 0; i <= offset; ++i) *d++ = *t++;
+    while (d <= t_end) *d++ = *t++;
     *d = '\0';
 }
 
