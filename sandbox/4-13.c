@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#define swap(t, x, y) \
+    t tmp = x;        \
+    x = y;            \
+    y = tmp;          \
+
+
 void reverse_rec(char *, int, int);
 
 int main(void)
@@ -18,10 +24,7 @@ int main(void)
 void reverse_rec(char *s, int i, int j)
 {
     if (i < j) {
-        char tmp = s[i];
-        s[i++] = s[j];
-        s[j--] = tmp;
-
-        reverse_rec(s, i, j);
+        swap(char, s[i], s[j]);
+        reverse_rec(s, ++i, --j);
     }
 }
