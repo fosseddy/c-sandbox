@@ -43,7 +43,7 @@ int main(int argc, char **argv)
         }
         line[j] = '\0';
 
-        char *p = malloc(sizeof(char) * strlen(line));
+        char *p = malloc(sizeof(char) * strlen(line) + 1);
         strcpy(p, line);
         lines[i++] = p;
     }
