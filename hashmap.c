@@ -114,20 +114,6 @@ int main() {
     struct Hash_Map *hm = make_hashmap();
 
     hashmap_insert(hm, "Test1", "1s");
-    hashmap_insert(hm, "Test2", "2s");
-    hashmap_insert(hm, "Test3", "3s");
-    hashmap_insert(hm, "Test4", "4s");
-    hashmap_insert(hm, "Test5", "5s");
-    hashmap_insert(hm, "Test6", "6s");
-    hashmap_insert(hm, "Test7", "7s");
-    hashmap_insert(hm, "Test8", "8s");
-    hashmap_insert(hm, "Test9", "9s");
-    hashmap_insert(hm, "Test10", "10s");
-    hashmap_insert(hm, "Test11", "11s");
-    hashmap_insert(hm, "Test12", "12s");
-    hashmap_insert(hm, "Test13", "13s");
-    hashmap_insert(hm, "Test14", "14s");
-    hashmap_insert(hm, "Test15", "15s");
 
     hashmap_debug(hm);
 
