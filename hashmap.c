@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <assert.h>
 
 static uint32_t djb2(uint8_t *str)
@@ -18,7 +17,7 @@ static uint32_t djb2(uint8_t *str)
 
 struct Slot {
     char *key;
-    void *value;
+    int value;
 };
 
 struct Hash_Map {
@@ -27,56 +26,50 @@ struct Hash_Map {
     struct Slot *slots;
 };
 
-static void hashmap_debug(struct Hash_Map *hm)
-{
-    for (size_t i = 0; i < hm->cap; ++i) {
-        if (hm->slots[i].key != NULL) {
-            printf("%s -- %s\n", hm->slots[i].key, (char *) hm->slots[i].value);
-        } else {
-            printf("%p\n", hm->slots[i].key);
-        }
-    }
-}
-
 static void hashmap_resize(struct Hash_Map *hm)
 {
-    assert(hm->cap > 0);
+    assert(hm->cap != 0);
+    assert(hm->size == hm->cap);
 
     hm->cap *= 2;
-
-    struct Slot *slots = calloc(hm->cap, sizeof(struct Slot));
-    assert(slots != NULL);
+    struct Slot *new_slots = calloc(hm->cap, sizeof(struct Slot));
+    assert(new_slots != NULL);
 
     for (size_t i = 0; i < hm->size; ++i) {
-        slots[i] = hm->slots[i];
+        new_slots[i] = hm->slots[i];
     }
 
     free(hm->slots);
-    hm->slots = slots;
+    hm->slots = new_slots;
 }
 
-#define HASH_MAP_INIT_CAP 16
+#define HASH_MAP_DEFAULT_CAP 4
 struct Hash_Map *make_hashmap()
 {
     struct Hash_Map *hm = malloc(sizeof(struct Hash_Map));
     assert(hm != NULL);
 
     hm->size = 0;
-    hm->cap = HASH_MAP_INIT_CAP;
+    hm->cap = HASH_MAP_DEFAULT_CAP;
 
-    hm->slots = calloc(hm->cap, sizeof(struct Slot));
-    assert(hm->slots != NULL);
+    struct Slot *slots = calloc(hm->cap, sizeof(struct Slot));
+    assert(slots != NULL);
+
+    hm->slots = slots;
 
     return hm;
 }
 
 void free_hashmap(struct Hash_Map *hm)
 {
+    assert(hm != NULL);
+    assert(hm->slots != NULL);
+
     free(hm->slots);
     free(hm);
 }
 
-void hashmap_insert(struct Hash_Map *hm, const char *k, void *v)
+void hashmap_put(struct Hash_Map *hm, char *k, int v)
 {
     assert(hm->size <= hm->cap);
 
@@ -84,38 +77,35 @@ void hashmap_insert(struct Hash_Map *hm, const char *k, void *v)
         hashmap_resize(hm);
     }
 
-    uint32_t hash = djb2((uint8_t *) k);
-    size_t index = hash % hm->cap;
-
-    while (hm->slots[index].key != NULL) {
-        index = (index + 1) % hm->cap;
-    }
-
-    hm->slots[index].key = (char *) k;
+    uint32_t index = djb2((uint8_t *) k) % hm->cap;
+    hm->slots[index].key = k;
     hm->slots[index].value = v;
-
     hm->size++;
-}
-
-void *hashmap_get(struct Hash_Map *hm, const char *k)
-{
-    uint32_t hash = djb2((uint8_t *) k);
-    size_t index = hash % hm->cap;
-
-    // @FIXME: infinite loop if slot does not exist
-    while (strcmp(hm->slots[index].key, k) != 0) {
-        index = (index + 1) % hm->cap;
-    }
-
-    return hm->slots[index].value;
 }
 
 int main() {
     struct Hash_Map *hm = make_hashmap();
 
-    hashmap_insert(hm, "Test1", "1s");
+    for (size_t i = 0; i < hm->cap; ++i) {
+        printf("%3li -> key: %10s; value: %3i;\n", i, hm->slots[i].key, hm->slots[i].value);
+    }
 
-    hashmap_debug(hm);
+    hashmap_put(hm, "zero", 0);
+    hashmap_put(hm, "one", 1);
+    hashmap_put(hm, "two", 2);
+    hashmap_put(hm, "three", 3);
+    hashmap_put(hm, "four", 4);
+    hashmap_put(hm, "five", 5);
+    hashmap_put(hm, "six", 6);
+    hashmap_put(hm, "seven", 7);
+    hashmap_put(hm, "eight", 8);
+    hashmap_put(hm, "nine", 9);
+
+    printf("\n");
+
+    for (size_t i = 0; i < hm->cap; ++i) {
+        printf("%3li -> key: %10s; value: %3i;\n", i, hm->slots[i].key, hm->slots[i].value);
+    }
 
     free_hashmap(hm);
 
