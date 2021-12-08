@@ -86,10 +86,6 @@ void hashmap_put(struct Hash_Map *hm, char *k, int v)
 int main() {
     struct Hash_Map *hm = make_hashmap();
 
-    for (size_t i = 0; i < hm->cap; ++i) {
-        printf("%3li -> key: %10s; value: %3i;\n", i, hm->slots[i].key, hm->slots[i].value);
-    }
-
     hashmap_put(hm, "zero", 0);
     hashmap_put(hm, "one", 1);
     hashmap_put(hm, "two", 2);
@@ -100,8 +96,6 @@ int main() {
     hashmap_put(hm, "seven", 7);
     hashmap_put(hm, "eight", 8);
     hashmap_put(hm, "nine", 9);
-
-    printf("\n");
 
     for (size_t i = 0; i < hm->cap; ++i) {
         printf("%3li -> key: %10s; value: %3i;\n", i, hm->slots[i].key, hm->slots[i].value);
