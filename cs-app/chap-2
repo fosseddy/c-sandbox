@@ -136,7 +136,7 @@ int uadd_ok(unsigned x, unsigned y)
     return x + y >= x;
 }
 
-Ex.2.28:
+Ex. 2.28:
    x         unsigned negation
 Hex Decimal     Decimal Hex
 1   1           15      F
