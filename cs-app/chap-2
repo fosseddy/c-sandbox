@@ -118,3 +118,14 @@ w          fun1(w)    fun2(w)
 0x87654321 0x00000021 0x00000021
 0x000000C9 same       0xFFFFFFC9
 0xEDCBA987 0x00000087 0xFFFFFF87
+
+Ex. 2.24:
+from 4-bit to 3-bit
+
+   Hex       Unsigned     Two's complement
+Orig Trun   Orig  Trun   Orig          Trun
+  1    1     1      1      1             1
+  3    3     3      3      3             3
+  5    5     5      5      5             5
+  C    4     12     4      -4            4
+  E    6     14     6      -2            6
