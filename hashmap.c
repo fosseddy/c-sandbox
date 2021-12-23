@@ -93,7 +93,6 @@ int main() {
     hashmap_put(hm, "four", 4);
     hashmap_put(hm, "five", 5);
     hashmap_put(hm, "six", 6);
-    hashmap_put(hm, "seven", 7);
 
     for (size_t i = 0; i < hm->cap; ++i) {
         printf("%3li -> key: %10s; value: %3i;\n", i, hm->slots[i].key, hm->slots[i].value);
