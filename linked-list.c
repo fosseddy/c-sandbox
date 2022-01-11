@@ -18,15 +18,6 @@ struct Node *make_node(int val)
     return n;
 }
 
-void free_node(struct Node *head)
-{
-    do {
-        struct Node *tmp = head->next;
-        free(head);
-        head = tmp;
-    } while (head != NULL);
-}
-
 int main(void)
 {
     struct Node *head = make_node(69);
@@ -38,8 +29,6 @@ int main(void)
     } else {
         printf("%i -- %p\n", a->value, (void *) a->next);
     }
-
-    free_node(head);
 
     return 0;
 }
