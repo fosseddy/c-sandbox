@@ -27,25 +27,9 @@ void free_node(struct Node *head)
     } while (head != NULL);
 }
 
-struct Node *node_get(struct Node *head, int val)
-{
-    while (head->next != NULL && head->value != val) {
-        head = head->next;
-    }
-
-    if (head->value != val) {
-        return NULL;
-    }
-
-    return head;
-}
-
 int main(void)
 {
     struct Node *head = make_node(69);
-
-    int value = 69;
-    struct Node *a = node_get(head, value);
 
     printf("\n");
 
