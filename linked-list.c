@@ -27,17 +27,6 @@ void free_node(struct Node *head)
     } while (head != NULL);
 }
 
-void node_put(struct Node *head, int val)
-{
-    struct Node *new_node = make_node(val);
-
-    while (head->next != NULL) {
-        head = head->next;
-    }
-
-    head->next = new_node;
-}
-
 struct Node *node_get(struct Node *head, int val)
 {
     while (head->next != NULL && head->value != val) {
@@ -54,8 +43,6 @@ struct Node *node_get(struct Node *head, int val)
 int main(void)
 {
     struct Node *head = make_node(69);
-    node_put(head, 420);
-    node_put(head, 11);
 
     int value = 69;
     struct Node *a = node_get(head, value);
