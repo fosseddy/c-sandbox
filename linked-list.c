@@ -51,19 +51,11 @@ struct Node *node_get(struct Node *head, int val)
     return head;
 }
 
-void node_print(struct Node *head)
-{
-    do {
-        printf("%i\n", head->value);
-    } while ((head = head->next) != NULL);
-}
-
 int main(void)
 {
     struct Node *head = make_node(69);
     node_put(head, 420);
     node_put(head, 11);
-    node_print(head);
 
     int value = 69;
     struct Node *a = node_get(head, value);
