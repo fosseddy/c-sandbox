@@ -31,18 +31,56 @@ void free_dyn_arr(struct Dyn_Arr *arr)
     free(arr);
 }
 
-int main(void)
+void dyn_arr_debug(struct Dyn_Arr *arr)
 {
-    struct Dyn_Arr *arr = make_dyn_arr();
-
     printf("size: %lu\n", arr->size);
     printf("capacity: %lu\n", arr->cap);
     printf("values:\n");
     for (size_t i = 0; i < arr->size; ++i) {
         printf("  %i\n", arr->values[i]);
     }
+}
+
+void dyn_arr_put(struct Dyn_Arr *arr, int value)
+{
+    assert(arr->size <= arr->cap);
+
+    if (arr->size == arr->cap) {
+        arr->cap *= 2;
+
+        int *values = malloc(arr->cap * sizeof(int));
+        assert(values != NULL);
+
+        for (size_t i = 0; i < arr->size; ++i) {
+            values[i] = arr->values[i];
+        }
+
+        free(arr->values);
+        arr->values = values;
+    }
+
+    arr->values[arr->size++] = value;
+}
+
+int main(void)
+{
+    struct Dyn_Arr *arr = make_dyn_arr();
+    dyn_arr_debug(arr);
+
+    dyn_arr_put(arr, 0);
+    dyn_arr_put(arr, 1);
+    dyn_arr_put(arr, 2);
+    dyn_arr_put(arr, 3);
+
+    dyn_arr_put(arr, 4);
+    dyn_arr_put(arr, 5);
+    dyn_arr_put(arr, 6);
+    dyn_arr_put(arr, 7);
+
+    dyn_arr_put(arr, 8);
+
+    dyn_arr_debug(arr);
 
     free_dyn_arr(arr);
-
     return 0;
 }
