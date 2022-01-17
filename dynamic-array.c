@@ -71,12 +71,10 @@ int main(void)
     dyn_arr_put(arr, 1);
     dyn_arr_put(arr, 2);
     dyn_arr_put(arr, 3);
-
     dyn_arr_put(arr, 4);
     dyn_arr_put(arr, 5);
     dyn_arr_put(arr, 6);
     dyn_arr_put(arr, 7);
-
     dyn_arr_put(arr, 8);
 
     dyn_arr_debug(arr);
