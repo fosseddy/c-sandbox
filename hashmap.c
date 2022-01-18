@@ -2,7 +2,18 @@
 #include <stdlib.h>
 #include <assert.h>
 
-unsigned long djb2(unsigned char *str)
+struct Slot {
+    char *key;
+    char *value;
+};
+
+struct Hashtable {
+    size_t size;
+    size_t cap;
+    struct Slot *slots;
+};
+
+static unsigned long djb2(unsigned char *str)
 {
     unsigned long hash = 5381;
     int c;
@@ -14,16 +25,13 @@ unsigned long djb2(unsigned char *str)
     return hash;
 }
 
-struct Slot {
-    char *key;
-    char *value;
-};
+static size_t generate_index(char *k, size_t cap)
+{
+    size_t hash = djb2((unsigned char *) k);
+    size_t index = hash % cap;
 
-struct Hashtable {
-    size_t size;
-    size_t cap;
-    struct Slot *slots;
-};
+    return index;
+}
 
 #define START_CAP 8
 struct Hashtable *make_hashtable()
@@ -64,8 +72,7 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
 {
     assert(ht->size <= ht->cap);
 
-    size_t hash = djb2((unsigned char *) k);
-    size_t index = hash % ht->cap;
+    size_t index = generate_index(k, ht->cap);
 
     ht->slots[index] = (struct Slot){ .key = k, .value = v };
     ht->size++;
@@ -73,8 +80,7 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
 
 char *hashtable_get(struct Hashtable *ht, char *k)
 {
-    size_t hash = djb2((unsigned char *) k);
-    size_t index = hash % ht->cap;
+    size_t index = generate_index(k, ht->cap);
 
     return ht->slots[index].value;
 }
@@ -87,6 +93,8 @@ int main(void) {
     hashtable_put(ht, "hello", "world");
     hashtable_put(ht, "how", "are");
     hashtable_put(ht, "you", "doing?");
+    hashtable_put(ht, "tell", "me");
+    hashtable_put(ht, "what", "are");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
