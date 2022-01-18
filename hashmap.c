@@ -106,6 +106,8 @@ int main(void) {
     hashtable_put(ht, "you", "what");
     hashtable_put(ht, "are", "you");
     hashtable_put(ht, "doing", "today");
+    // @TODO: replace old value
+    // hashtable_put(ht, "doing", "change");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
