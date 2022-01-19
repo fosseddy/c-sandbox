@@ -138,8 +138,6 @@ int main(void) {
 
     hashtable_put(ht, "3", "3");
     hashtable_put(ht, "4", "4");
-    // @TODO: replace old value
-    // hashtable_put(ht, "doing", "change");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
