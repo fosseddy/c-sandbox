@@ -34,6 +34,16 @@ static size_t generate_index(char *k, size_t cap)
     return index;
 }
 
+static void slots_put(struct Slot *slots, struct Slot slot, size_t cap)
+{
+    size_t index = generate_index(slot.key, cap);
+    while (slots[index].key != NULL) {
+        index = (index + 1) % cap;
+    }
+
+    slots[index] = slot;
+}
+
 #define START_CAP 8
 struct Hashtable *make_hashtable()
 {
@@ -72,22 +82,17 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
     assert(ht->size <= ht->cap);
 
     if (ht->size == ht->cap) {
-        size_t prev_cap = ht->cap;
         ht->cap *= 2;
 
         struct Slot *slots = calloc(ht->cap, sizeof(struct Slot));
         assert(slots != NULL);
 
-        for (size_t i = 0; i < prev_cap; ++i) {
+        // we can use ht->size, because hash table is full,
+        // so size == capacity before resizing
+        for (size_t i = 0; i < ht->size; ++i) {
             struct Slot slot = ht->slots[i];
-
             if (slot.key != NULL) {
-                size_t index = generate_index(ht->slots[i].key, ht->cap);
-                while (slots[index].key != NULL) {
-                    index = (index + 1) % ht->cap;
-                }
-
-                slots[index] = slot;
+                slots_put(slots, slot, ht->cap);
             }
         }
 
@@ -95,12 +100,8 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
         ht->slots = slots;
     }
 
-    size_t index = generate_index(k, ht->cap);
-    while (ht->slots[index].key != NULL) {
-        index = (index + 1) % ht->cap;
-    }
-
-    ht->slots[index] = (struct Slot){ .key = k, .value = v };
+    struct Slot slot = { .key = k, .value = v };
+    slots_put(ht->slots, slot, ht->cap);
     ht->size++;
 }
 
@@ -137,14 +138,15 @@ int main(void) {
     printf("-------------------------------------\n");
 
     hashtable_put(ht, "3", "3");
+    hashtable_put(ht, "4", "4");
     // @TODO: replace old value
     // hashtable_put(ht, "doing", "change");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
-    printf("key: hello, value: %s\n", hashtable_get(ht, "hello"));
-    printf("key: you, value: %s\n", hashtable_get(ht, "you"));
-    printf("key: doing, value: %s\n", hashtable_get(ht, "doing"));
+    printf("key: hello,        value: %s\n", hashtable_get(ht, "hello"));
+    printf("key: you,          value: %s\n", hashtable_get(ht, "you"));
+    printf("key: doing,        value: %s\n", hashtable_get(ht, "doing"));
     printf("key: do_not_exist, value: %s\n", hashtable_get(ht, "do_not_exist"));
 
     free_hashtable(ht);
