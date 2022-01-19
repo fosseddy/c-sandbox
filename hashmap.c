@@ -87,8 +87,7 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
         struct Slot *slots = calloc(ht->cap, sizeof(struct Slot));
         assert(slots != NULL);
 
-        // we can use ht->size, because hash table is full,
-        // so size == capacity before resizing
+        // hash table is full, so we can use ht->size
         for (size_t i = 0; i < ht->size; ++i) {
             struct Slot slot = ht->slots[i];
             if (slot.key != NULL) {
