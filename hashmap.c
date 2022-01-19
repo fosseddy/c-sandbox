@@ -71,6 +71,30 @@ void hashtable_put(struct Hashtable *ht, char *k, char *v)
 {
     assert(ht->size <= ht->cap);
 
+    if (ht->size == ht->cap) {
+        size_t prev_cap = ht->cap;
+        ht->cap *= 2;
+
+        struct Slot *slots = calloc(ht->cap, sizeof(struct Slot));
+        assert(slots != NULL);
+
+        for (size_t i = 0; i < prev_cap; ++i) {
+            struct Slot slot = ht->slots[i];
+
+            if (slot.key != NULL) {
+                size_t index = generate_index(ht->slots[i].key, ht->cap);
+                while (slots[index].key != NULL) {
+                    index = (index + 1) % ht->cap;
+                }
+
+                slots[index] = slot;
+            }
+        }
+
+        free(ht->slots);
+        ht->slots = slots;
+    }
+
     size_t index = generate_index(k, ht->cap);
     while (ht->slots[index].key != NULL) {
         index = (index + 1) % ht->cap;
@@ -106,6 +130,13 @@ int main(void) {
     hashtable_put(ht, "you", "what");
     hashtable_put(ht, "are", "you");
     hashtable_put(ht, "doing", "today");
+    hashtable_put(ht, "0", "0");
+    hashtable_put(ht, "1", "1");
+    hashtable_put(ht, "2", "2");
+    hashtable_debug(ht);
+    printf("-------------------------------------\n");
+
+    hashtable_put(ht, "3", "3");
     // @TODO: replace old value
     // hashtable_put(ht, "doing", "change");
     hashtable_debug(ht);
