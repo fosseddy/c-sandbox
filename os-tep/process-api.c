@@ -95,13 +95,29 @@ void use_wait(void)
     }
 }
 
+void use_waitpid(void)
+{
+    pid_t child_pid = fork();
+
+    if (child_pid < 0) {
+        fprintf(stderr, "could not create child process\n");
+        exit(1);
+    } else if (child_pid == 0) {
+        printf("hello\n");
+    } else {
+        waitpid(child_pid, NULL, 0);
+        printf("goodbye\n");
+    }
+}
+
 int main(void)
 {
     //change_var();
     //opens_file();
     //greet_farewell();
     //exec_ls();
-    use_wait();
+    //use_wait();
+    use_waitpid();
 
     return 0;
 }
