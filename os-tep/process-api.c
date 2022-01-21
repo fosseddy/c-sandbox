@@ -47,10 +47,26 @@ void opens_file(void)
     close(fd);
 }
 
+void greet_farewell(void)
+{
+    pid_t child_pid = fork();
+
+    if (child_pid < 0) {
+        fprintf(stderr, "could not create child process\n");
+        exit(1);
+    } else if (child_pid == 0) {
+        printf("hello\n");
+    } else {
+        sleep(1);
+        printf("goodbye\n");
+    }
+}
+
 int main(void)
 {
     //change_var();
-    opens_file();
+    //opens_file();
+    greet_farewell();
 
     return 0;
 }
