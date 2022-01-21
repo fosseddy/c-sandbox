@@ -126,6 +126,37 @@ void close_stdout(void)
     }
 }
 
+void pipe_two_children(void)
+{
+    int pipefd[2];
+    pipe(pipefd);
+
+    pid_t first = fork();
+    if (first == 0) {
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        write(STDOUT_FILENO, "hello from first\n", 18);
+    } else {
+        pid_t second = fork();
+        if (second == 0) {
+            write(STDOUT_FILENO, "hello from second\n", 18);
+            close(pipefd[1]);
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            char ch[1];
+            while (read(STDIN_FILENO, &ch, 1) > 0) {
+                write(STDOUT_FILENO, ch, 1);
+            }
+        } else {
+            close(pipefd[0]);
+            close(pipefd[1]);
+            waitpid(second, NULL, 0);
+            printf("goodbye from parent\n");
+        }
+    }
+}
+
 int main(void)
 {
     //change_var();
@@ -134,8 +165,8 @@ int main(void)
     //exec_ls();
     //use_wait();
     //use_waitpid();
-    close_stdout();
+    //close_stdout();
+    pipe_two_children();
 
     return 0;
 }
-
