@@ -80,12 +80,28 @@ void exec_ls(void)
     }
 }
 
+void use_wait(void)
+{
+    pid_t child_pid = fork();
+
+    if (child_pid < 0) {
+        fprintf(stderr, "could not create child process\n");
+        exit(1);
+    } else if (child_pid == 0) {
+        printf("hello\n");
+    } else {
+        wait(NULL);
+        printf("goodbye\n");
+    }
+}
+
 int main(void)
 {
     //change_var();
     //opens_file();
     //greet_farewell();
-    exec_ls();
+    //exec_ls();
+    use_wait();
 
     return 0;
 }
