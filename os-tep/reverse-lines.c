@@ -20,14 +20,18 @@ int main(int argc, char **argv)
         }
 
         char **arr = malloc(arr_cap * sizeof(char *));
+        assert(arr != NULL);
+
         while(!feof(f)) {
             char *line = calloc(line_cap, sizeof(char));
+            assert(line != NULL);
             size_t i = 0;
             int c;
             while ((c = getc(f)) != EOF && c != '\n') {
                 if (i == line_cap - 1) {
                     line_cap *= 2;
                     char *new_line = calloc(line_cap, sizeof(char));
+                    assert(new_line != NULL);
                     strcpy(new_line, line);
                     free(line);
                     line = new_line;
@@ -39,6 +43,7 @@ int main(int argc, char **argv)
             if (arr_size == arr_cap) {
                 arr_cap *= 2;
                 arr = realloc(arr, arr_cap * sizeof(char *));
+                assert(arr != NULL);
             }
 
             arr[arr_size++] = line;
