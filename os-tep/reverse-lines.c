@@ -9,16 +9,15 @@ int main(int argc, char **argv)
     argv++;
 
     while (*argv) {
-        size_t arr_cap = 8;
+        size_t arr_cap = 100;
         size_t arr_size = 0;
-        size_t line_cap = 8;
+        size_t line_cap = 80;
 
         FILE *f = fopen(*argv, "r");
         if (f == NULL) {
             fprintf(stderr, "could not open file %s\n", *argv);
             return 1;
         }
-
 
         char **arr = malloc(arr_cap * sizeof(char *));
         while(!feof(f)) {
@@ -48,7 +47,6 @@ int main(int argc, char **argv)
         for (int i = arr_size - 1; i >= 0; --i) {
             printf("%s\n", arr[i]);
         }
-
 
         for (size_t i = 0; i < arr_size; ++i) {
             free(arr[i]);
