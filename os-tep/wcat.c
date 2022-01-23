@@ -20,6 +20,7 @@ int main(int argc, char **argv)
             fprintf(stdout, "%c", c);
         }
 
+        fclose(f);
         argv++;
     }
 
