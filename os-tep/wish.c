@@ -25,7 +25,6 @@ void cmd_debug(struct Cmd *cmd)
     }
 }
 
-
 void read_input(char *buf, size_t n)
 {
     size_t i = 0;
@@ -92,26 +91,29 @@ int main(int argc, char **argv)
             free(cmd->args);
             free(cmd);
 
-            break;
+            return 0;
         }
 
         pid_t cid = fork();
+        int exec_success = 0;
         if (cid < 0) {
             fprintf(stderr, "could not create child process\n");
             return 1;
         } else if (cid == 0) {
-            execv(cmd->path, cmd->args);
+            exec_success = execv(cmd->path, cmd->args);
+            printf("wish: %s: command not found\n", cmd->args[0]);
         } else {
-            // parent
             waitpid(cid, NULL, 0);
-
-            free(cmd->path);
-            for (size_t i = 0; i < cmd->args_size; ++i) {
-                free(cmd->args[i]);
-            }
-            free(cmd->args);
-            free(cmd);
         }
+
+        free(cmd->path);
+        for (size_t i = 0; i < cmd->args_size; ++i) {
+            free(cmd->args[i]);
+        }
+        free(cmd->args);
+        free(cmd);
+
+        if (exec_success == -1) return 1;
     }
 
     return 0;
