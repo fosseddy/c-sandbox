@@ -101,7 +101,7 @@ int main(void)
 
         char *cmd_name = cmd->args[0];
 
-        for (size_t i = 0; i < LENGTH_OF_BUILT_IN; ++i) {
+        for (enum Built_In_Kind i = 0; i < LENGTH_OF_BUILT_IN; ++i) {
             if (strcmp(cmd_name, built_in_cmds[i]) == 0) {
                 cmd->built_in_kind = i;
                 break;
