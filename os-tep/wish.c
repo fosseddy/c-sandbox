@@ -6,6 +6,7 @@
 #define INPUT_CAP 1000
 
 #define ARGS_DEFAULT_CAP 8
+#define PATHS_DEFAULT_CAP 8
 
 //static char *built_in_cmds[] = { "exit", "cd", "path" };
 
@@ -18,7 +19,7 @@ struct Cmd {
 };
 
 struct Shell {
-    char *paths[10];
+    char paths[5][100];
     size_t paths_size;
 
     int exit;
@@ -27,8 +28,12 @@ struct Shell {
 int main(void)
 {
     struct Shell *shell = malloc(sizeof(struct Shell));
+    assert(shell != NULL);
+
     shell->exit = 0;
     shell->paths_size = 0;
+
+    strcpy(shell->paths[shell->paths_size++], "/bin");
 
     while (!shell->exit) {
         char input[INPUT_CAP] = {0};
@@ -75,7 +80,7 @@ int main(void)
             cmd->args[cmd->args_size++] = arg;
         }
 
-        cmd->args[cmd->args_size] = NULL;
+        cmd->args[cmd->args_size++] = NULL;
 
         cmd->name = malloc((strlen(cmd->args[0]) + 1) * sizeof(char));
         assert(cmd->name != NULL);
@@ -84,7 +89,16 @@ int main(void)
         if (strcmp(cmd->name, "exit") == 0) {
             shell->exit = 1;
         } else if (strcmp(cmd->name, "path") == 0) {
-            printf("built in path command\n");
+            shell->paths_size = 0;
+            if (cmd->args[1] == NULL) {
+                strcpy(shell->paths[shell->paths_size++], "");
+            } else {
+                for (size_t i = 1; i < cmd->args_size - 1; ++i) {
+                    assert(i < 5);
+                    assert(strlen(cmd->args[i]) < 100);
+                    strcpy(shell->paths[shell->paths_size++], cmd->args[i]);
+                }
+            }
         } else if (strcmp(cmd->name, "cd") == 0) {
             printf("built in cd command\n");
         }
