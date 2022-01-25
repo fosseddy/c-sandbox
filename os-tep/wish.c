@@ -2,15 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 #include <errno.h>
 #include <assert.h>
 
 #define INPUT_CAP 1000
 
 #define ARGS_DEFAULT_CAP 8
-#define PATHS_DEFAULT_CAP 8
-
-//static char *built_in_cmds[] = { "exit", "cd", "path" };
 
 struct Cmd {
     char *name;
@@ -113,6 +112,25 @@ int main(void)
                 fprintf(stderr, "%s\n", strerror(errno));
                 continue;
             }
+        } else {
+            char path[100] = {0};
+            assert(strlen(shell->paths[0]) + strlen(cmd->name) < 100);
+            sprintf(path, "%s/%s", shell->paths[0], cmd->name);
+
+            pid_t cid = fork();
+
+            if (cid < 0) {
+                fprintf(stderr, "Could not create child process\n");
+                continue;
+            }
+
+            if (cid == 0) {
+                execv(path, cmd->args);
+                fprintf(stderr, "unreachable!\n");
+                exit(1);
+            }
+
+            waitpid(cid, NULL, 0);
         }
 
         for (size_t i = 0; cmd->args[i] != NULL; ++i) {
