@@ -1,120 +1,103 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <sys/wait.h>
 #include <assert.h>
 
 #define INPUT_CAP 1000
 
-struct Cmd {
-    char *path;
-    char **args;
+#define ARGS_DEFAULT_CAP 8
 
+//static char *built_in_cmds[] = { "exit", "cd", "path" };
+
+struct Cmd {
+    char *name;
+
+    char **args;
+    size_t args_cap;
     size_t args_size;
 };
 
-void cmd_debug(struct Cmd *cmd)
+struct Shell {
+    char *paths[10];
+    size_t paths_size;
+
+    int exit;
+};
+
+int main(void)
 {
-    printf("cmd->path: %s\n", cmd->path);
-    printf("cmd->args_size: %lu\n", cmd->args_size);
-    printf("cmd->args:\n");
-    for (size_t i = 0; i < cmd->args_size; ++i) {
-        printf("    %lu: %s\n", i, cmd->args[i]);
-    }
-}
+    struct Shell *shell = malloc(sizeof(struct Shell));
+    shell->exit = 0;
+    shell->paths_size = 0;
 
-void read_input(char *buf, size_t n)
-{
-    size_t i = 0;
-    int c;
-
-    while ((c = getchar()) != EOF && c != '\n') {
-        assert(i < n - 1);
-        buf[i++] = c;
-    }
-}
-
-int main(int argc, char **argv)
-{
-    if (argc > 2) {
-        fprintf(stderr, "Usage: wish [command | batch.txt]\n");
-        return 1;
-    }
-
-    if (argc == 2) {
-        argv++;
-        printf("batch file is: %s\n", *argv);
-        return 0;
-    }
-
-    for (;;) {
-        printf("wish> ");
-
+    while (!shell->exit) {
         char input[INPUT_CAP] = {0};
-        read_input(input, INPUT_CAP);
+
+        {
+            size_t i = 0;
+            int c;
+            while ((c = getchar()) != EOF && c != '\n') {
+                assert(i < INPUT_CAP - 1);
+                input[i++] = c;
+            }
+        }
+
+        if (strlen(input) == 0) continue;
 
         struct Cmd *cmd = malloc(sizeof(struct Cmd));
         assert(cmd != NULL);
 
-        cmd->path = calloc(50, sizeof(char));
-        assert(cmd->path != NULL);
+        cmd->args_size = 0;
+        cmd->args_cap = ARGS_DEFAULT_CAP;
 
-        cmd->args = calloc(10, sizeof(char *));
+        cmd->args = malloc(cmd->args_cap * sizeof(char *));
         assert(cmd->args != NULL);
 
-        cmd->args_size = 0;
-
         for (size_t i = 0; input[i] != '\0'; ++i) {
-            char *buf = calloc(50, sizeof(char));
+            char buf[100] = {0};
+
             size_t j = 0;
             while (input[i] != ' ' && input[i] != '\0') {
+                assert(i < 100 - 1);
                 buf[j++] = input[i++];
             }
 
-            if (cmd->args_size == 0) {
-                char tt[50] = {0};
-                strcat(tt, "/bin/");
-                strcat(tt, buf);
-                strcpy(cmd->path, tt);
+            if (cmd->args_size == cmd->args_cap) {
+                cmd->args_cap *= 2;
+                cmd->args = realloc(cmd->args, cmd->args_cap * sizeof(char *));
+                assert(cmd->args != NULL);
             }
 
-            cmd->args[cmd->args_size++] = buf;
+            char *arg = malloc((strlen(buf) + 1) * sizeof(char));
+            assert(arg != NULL);
+
+            strcpy(arg, buf);
+            cmd->args[cmd->args_size++] = arg;
         }
 
-        if (strcmp(cmd->args[0], "exit") == 0) {
-            free(cmd->path);
-            for (size_t i = 0; i < cmd->args_size; ++i) {
-                free(cmd->args[i]);
-            }
-            free(cmd->args);
-            free(cmd);
+        cmd->args[cmd->args_size] = NULL;
 
-            return 0;
+        cmd->name = malloc((strlen(cmd->args[0]) + 1) * sizeof(char));
+        assert(cmd->name != NULL);
+        strcpy(cmd->name, cmd->args[0]);
+
+        if (strcmp(cmd->name, "exit") == 0) {
+            shell->exit = 1;
+        } else if (strcmp(cmd->name, "path") == 0) {
+            printf("built in path command\n");
+        } else if (strcmp(cmd->name, "cd") == 0) {
+            printf("built in cd command\n");
         }
 
-        pid_t cid = fork();
-        int exec_success = 0;
-        if (cid < 0) {
-            fprintf(stderr, "could not create child process\n");
-            return 1;
-        } else if (cid == 0) {
-            exec_success = execv(cmd->path, cmd->args);
-            printf("wish: %s: command not found\n", cmd->args[0]);
-        } else {
-            waitpid(cid, NULL, 0);
-        }
-
-        free(cmd->path);
-        for (size_t i = 0; i < cmd->args_size; ++i) {
+        for (size_t i = 0; cmd->args[i] != NULL; ++i) {
             free(cmd->args[i]);
         }
         free(cmd->args);
+        free(cmd->name);
         free(cmd);
-
-        if (exec_success == -1) return 1;
     }
+
+    free(shell);
 
     return 0;
 }
