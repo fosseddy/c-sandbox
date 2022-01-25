@@ -94,12 +94,13 @@ int main(void)
             shell->paths_size = 0;
             if (cmd->args[1] == NULL) {
                 strcpy(shell->paths[shell->paths_size++], "");
-            } else {
-                for (size_t i = 1; i < cmd->args_size - 1; ++i) {
-                    assert(i < 5);
-                    assert(strlen(cmd->args[i]) < 100);
-                    strcpy(shell->paths[shell->paths_size++], cmd->args[i]);
-                }
+                continue;
+            }
+
+            for (size_t i = 1; i < cmd->args_size - 1; ++i) {
+                assert(i < 5);
+                assert(strlen(cmd->args[i]) < 100);
+                strcpy(shell->paths[shell->paths_size++], cmd->args[i]);
             }
         } else if (strcmp(cmd->name, "cd") == 0) {
             char *dir_name = cmd->args[1];
