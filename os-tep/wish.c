@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <errno.h>
 #include <assert.h>
 
 #define INPUT_CAP 1000
@@ -100,7 +102,16 @@ int main(void)
                 }
             }
         } else if (strcmp(cmd->name, "cd") == 0) {
-            printf("built in cd command\n");
+            char *dir_name = cmd->args[1];
+            if (dir_name == NULL) {
+                fprintf(stderr, "No such file or directory\n");
+                continue;
+            }
+
+            if (chdir(dir_name) < 0) {
+                fprintf(stderr, "%s\n", strerror(errno));
+                continue;
+            }
         }
 
         for (size_t i = 0; cmd->args[i] != NULL; ++i) {
