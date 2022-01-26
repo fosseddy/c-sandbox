@@ -11,6 +11,9 @@
 
 #define ARGS_DEFAULT_CAP 8
 
+#define PATHS_DEFAULT_CAP 4
+#define DEFAUTL_PATH "/bin"
+
 enum Built_In_Kind {
     NOT_BUILT_IN = 0,
     BUILT_IN_EXIT,
@@ -35,7 +38,8 @@ struct Cmd {
 };
 
 struct Shell {
-    char paths[5][100];
+    char **paths;
+    size_t paths_cap;
     size_t paths_size;
 
     int exit;
@@ -48,8 +52,16 @@ int main(void)
 
     shell->exit = 0;
     shell->paths_size = 0;
+    shell->paths_cap = PATHS_DEFAULT_CAP;
 
-    strcpy(shell->paths[shell->paths_size++], "/bin");
+    shell->paths = malloc(shell->paths_cap * sizeof(char *));
+    assert(shell->paths != NULL);
+
+    char *default_path = malloc((strlen(DEFAUTL_PATH) + 1) * sizeof(char));
+    assert(default_path != NULL);
+
+    strcpy(default_path, DEFAUTL_PATH);
+    shell->paths[shell->paths_size++] = default_path;
 
     while (!shell->exit) {
         char input[INPUT_CAP] = {0};
@@ -89,7 +101,7 @@ int main(void)
 
         char *cmd_name = cmd->args[0];
 
-        for (enum Built_In_Kind i = 0; i < LENGTH_OF_BUILT_IN; ++i) {
+        for (enum Built_In_Kind i = 1; i < LENGTH_OF_BUILT_IN; ++i) {
             if (strcmp(cmd_name, built_in_cmds[i]) == 0) {
                 cmd->built_in_kind = i;
                 break;
@@ -114,6 +126,10 @@ int main(void)
                 }
                 free(cmd->args);
                 free(cmd);
+                for (size_t i = 0; i < shell->paths_size; ++i) {
+                    free(shell->paths[i]);
+                }
+                free(shell->paths);
                 free(shell);
 
                 exit(1);
@@ -127,14 +143,21 @@ int main(void)
                     break;
 
                 case BUILT_IN_PATH:
+                    for (size_t i = 0; i < shell->paths_size; ++i) {
+                        free(shell->paths[i]);
+                    }
                     shell->paths_size = 0;
                     if (cmd->args[1] == NULL) {
-                        strcpy(shell->paths[shell->paths_size++], "");
+                        char *p = malloc(sizeof(char));
+                        assert(p != NULL);
+                        strcpy(p, "");
+                        shell->paths[shell->paths_size++] = p;
                     } else {
                         for (size_t i = 1; i < cmd->args_size - 1; ++i) {
-                            assert(i < 5);
-                            assert(strlen(cmd->args[i]) < 100);
-                            strcpy(shell->paths[shell->paths_size++], cmd->args[i]);
+                            char *p = malloc((strlen(cmd->args[i]) + 1) * sizeof(char));
+                            assert(p != NULL);
+                            strcpy(p, cmd->args[i]);
+                            shell->paths[shell->paths_size++] = p;
                         }
                     }
                     break;
@@ -159,6 +182,10 @@ int main(void)
         free(cmd);
     }
 
+    for (size_t i = 0; i < shell->paths_size; ++i) {
+        free(shell->paths[i]);
+    }
+    free(shell->paths);
     free(shell);
 
     return 0;
