@@ -21,16 +21,16 @@
         assert(arr != NULL);                    \
     } while (0)                                 \
 
-enum Built_In_Kind {
+enum Cmd_Kind {
     NOT_BUILT_IN = 0,
     BUILT_IN_EXIT,
     BUILT_IN_PATH,
     BUILT_IN_CD,
     BUILT_IN_DUMP,
-    LENGTH_OF_BUILT_IN,
+    CMD_KIND_LENGTH,
 };
 
-static char *built_in_cmds[LENGTH_OF_BUILT_IN] = {
+static char *built_in_cmds[CMD_KIND_LENGTH] = {
     [NOT_BUILT_IN]  = "",
     [BUILT_IN_CD]   = "cd",
     [BUILT_IN_EXIT] = "exit",
@@ -43,7 +43,7 @@ struct Cmd {
     size_t args_cap;
     size_t args_size;
 
-    enum Built_In_Kind built_in_kind;
+    enum Cmd_Kind kind;
 };
 
 struct Shell {
@@ -82,6 +82,7 @@ int main(void)
 
         cmd->args_size = 0;
         cmd->args_cap = ARGS_DEFAULT_CAP;
+        cmd->kind = NOT_BUILT_IN;
 
         cmd->args = malloc(cmd->args_cap * sizeof(char *));
         assert(cmd->args != NULL);
@@ -98,47 +99,39 @@ int main(void)
         }
 
         cmd->args[cmd->args_size++] = NULL;
-        cmd->built_in_kind = NOT_BUILT_IN;
 
         char *cmd_name = cmd->args[0];
 
-        for (enum Built_In_Kind i = 1; i < LENGTH_OF_BUILT_IN; ++i) {
+        for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
             if (strcmp(cmd_name, built_in_cmds[i]) == 0) {
-                cmd->built_in_kind = i;
+                cmd->kind = i;
                 break;
             }
         }
 
-        if (cmd->built_in_kind == NOT_BUILT_IN) {
+        if (cmd->kind == NOT_BUILT_IN) {
+            //for (size_t i = 0; i < shell->paths_size; ++i) {
+            //}
             char path[100] = {0};
             assert(strlen(shell->paths[0]) + strlen(cmd_name) < 100);
             sprintf(path, "%s/%s", shell->paths[0], cmd_name);
 
-            pid_t cid = fork();
-
-            if (cid < 0) {
-                fprintf(stderr, "Could not create child process\n");
-            } else if (cid == 0) {
-                execv(path, cmd->args);
-                fprintf(stderr, "child process %i: unreachable!\n", cid);
-
-                for (size_t i = 0; cmd->args[i] != NULL; ++i) {
-                    free(cmd->args[i]);
-                }
-                free(cmd->args);
-                free(cmd);
-                for (size_t i = 0; i < shell->paths_size; ++i) {
-                    free(shell->paths[i]);
-                }
-                free(shell->paths);
-                free(shell);
-
-                exit(1);
+            if (access(path, X_OK) < 0) {
+                fprintf(stderr, "command `%s` not found\n", cmd_name);
             } else {
-                waitpid(cid, NULL, 0);
+                pid_t cid = fork();
+
+                if (cid < 0) {
+                    fprintf(stderr, "Could not create child process\n");
+                } else if (cid == 0) {
+                    execv(path, cmd->args);
+                    assert(0 && "Unreachable!\n");
+                } else {
+                    waitpid(cid, NULL, 0);
+                }
             }
         } else {
-            switch (cmd->built_in_kind) {
+            switch (cmd->kind) {
                 case BUILT_IN_EXIT:
                     shell->exit = 1;
                     break;
