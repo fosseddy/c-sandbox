@@ -110,13 +110,16 @@ int main(void)
         }
 
         if (cmd->kind == NOT_BUILT_IN) {
-            //for (size_t i = 0; i < shell->paths_size; ++i) {
-            //}
             char path[100] = {0};
-            assert(strlen(shell->paths[0]) + strlen(cmd_name) < 100);
-            sprintf(path, "%s/%s", shell->paths[0], cmd_name);
 
-            if (access(path, X_OK) < 0) {
+            int path_exist = 0;
+            for (size_t i = 0; i < shell->paths_size; ++i) {
+                assert(strlen(shell->paths[i]) + strlen(cmd_name) < 100);
+                sprintf(path, "%s/%s", shell->paths[i], cmd_name);
+                if ((path_exist = access(path, X_OK)) == 0) break;
+            }
+
+            if (path_exist < 0) {
                 fprintf(stderr, "command `%s` not found\n", cmd_name);
             } else {
                 pid_t cid = fork();
