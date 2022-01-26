@@ -41,7 +41,7 @@ struct Shell {
     int exit;
 };
 
-struct Shell *make_shell(void)
+int main(void)
 {
     struct Shell *shell = malloc(sizeof(struct Shell));
     assert(shell != NULL);
@@ -50,13 +50,6 @@ struct Shell *make_shell(void)
     shell->paths_size = 0;
 
     strcpy(shell->paths[shell->paths_size++], "/bin");
-
-    return shell;
-}
-
-int main(void)
-{
-    struct Shell *shell = make_shell();
 
     while (!shell->exit) {
         char input[INPUT_CAP] = {0};
@@ -74,26 +67,21 @@ int main(void)
         cmd->args = malloc(cmd->args_cap * sizeof(char *));
         assert(cmd->args != NULL);
 
-        for (size_t i = 0; input[i] != '\0'; ++i) {
-            char buf[100] = {0};
-
-            size_t j = 0;
-            while (input[i] != ' ' && input[i] != '\0') {
-                assert(i < 100 - 1);
-                buf[j++] = input[i++];
-            }
-
+        char *tok = strtok(input, " ");
+        while (tok != NULL) {
             if (cmd->args_size == cmd->args_cap) {
                 cmd->args_cap *= 2;
                 cmd->args = realloc(cmd->args, cmd->args_cap * sizeof(char *));
                 assert(cmd->args != NULL);
             }
 
-            char *arg = malloc((strlen(buf) + 1) * sizeof(char));
+            char *arg = malloc((strlen(tok) + 1) * sizeof(char));
             assert(arg != NULL);
 
-            strcpy(arg, buf);
+            strcpy(arg, tok);
             cmd->args[cmd->args_size++] = arg;
+
+            tok = strtok(NULL, " ");
         }
 
         cmd->args[cmd->args_size++] = NULL;
@@ -129,9 +117,9 @@ int main(void)
                 free(shell);
 
                 exit(1);
+            } else {
+                waitpid(cid, NULL, 0);
             }
-
-            waitpid(cid, NULL, 0);
         } else {
             switch (cmd->built_in_kind) {
                 case BUILT_IN_EXIT:
