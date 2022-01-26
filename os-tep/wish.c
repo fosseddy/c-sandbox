@@ -14,21 +14,28 @@
 #define PATHS_DEFAULT_CAP 4
 #define DEFAUTL_PATH "/bin"
 
-char *strdup(char *);
+#define REALLOC_ARR(arr, cap, type)             \
+    do {                                        \
+        cap *= 2;                               \
+        arr = realloc(arr, cap * sizeof(type)); \
+        assert(arr != NULL);                    \
+    } while (0)                                 \
 
 enum Built_In_Kind {
     NOT_BUILT_IN = 0,
     BUILT_IN_EXIT,
     BUILT_IN_PATH,
     BUILT_IN_CD,
+    BUILT_IN_DUMP,
     LENGTH_OF_BUILT_IN,
 };
 
-static char *built_in_cmds[] = {
-    [NOT_BUILT_IN] = "",
+static char *built_in_cmds[LENGTH_OF_BUILT_IN] = {
+    [NOT_BUILT_IN]  = "",
+    [BUILT_IN_CD]   = "cd",
     [BUILT_IN_EXIT] = "exit",
     [BUILT_IN_PATH] = "path",
-    [BUILT_IN_CD] = "cd"
+    [BUILT_IN_DUMP] = "dump"
 };
 
 struct Cmd {
@@ -46,6 +53,8 @@ struct Shell {
 
     int exit;
 };
+
+char *strdup(char *);
 
 int main(void)
 {
@@ -79,10 +88,8 @@ int main(void)
 
         char *tok = strtok(input, " ");
         while (tok != NULL) {
-            if (cmd->args_size == cmd->args_cap) {
-                cmd->args_cap *= 2;
-                cmd->args = realloc(cmd->args, cmd->args_cap * sizeof(char *));
-                assert(cmd->args != NULL);
+            if (cmd->args_size + 1 == cmd->args_cap) {
+                REALLOC_ARR(cmd->args, cmd->args_cap, char *);
             }
 
             cmd->args[cmd->args_size++] = strdup(tok);
@@ -145,6 +152,9 @@ int main(void)
                         shell->paths[shell->paths_size++] = strdup("");
                     } else {
                         for (size_t i = 1; i < cmd->args_size - 1; ++i) {
+                            if (shell->paths_size == shell->paths_cap) {
+                                REALLOC_ARR(shell->paths, shell->paths_cap, char *);
+                            }
                             shell->paths[shell->paths_size++] = strdup(cmd->args[i]);
                         }
                     }
@@ -158,6 +168,28 @@ int main(void)
                         fprintf(stderr, "%s\n", strerror(errno));
                     }
                 } break;
+
+                case BUILT_IN_DUMP:
+                    printf("cmd:\n");
+                    printf("    args_size: %lu\n", cmd->args_size);
+                    printf("    args_cap: %lu\n", cmd->args_cap);
+                    printf("    args:\n");
+                    for (size_t i = 0; i < cmd->args_size; ++i) {
+                        printf("        arg %lu: %s\n", i, cmd->args[i]);
+                    }
+
+                    printf("\n");
+
+                    printf("shell:\n");
+                    printf("    paths_size: %lu\n", shell->paths_size);
+                    printf("    paths_cap: %lu\n", shell->paths_cap);
+                    printf("    paths:\n");
+                    for (size_t i = 0; i < shell->paths_size; ++i) {
+                        printf("        path %lu: %s\n", i, shell->paths[i]);
+                    }
+
+                    printf("\n");
+                    break;
 
                 default: assert(0 && "Unreachable\n");
             }
