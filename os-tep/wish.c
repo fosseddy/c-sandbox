@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <assert.h>
 
@@ -44,6 +46,9 @@ struct Cmd {
     size_t args_size;
 
     enum Cmd_Kind kind;
+
+    char *redirect_dest;
+    int redirect;
 };
 
 struct Shell {
@@ -80,8 +85,12 @@ int main(void)
         struct Cmd *cmd = malloc(sizeof(struct Cmd));
         assert(cmd != NULL);
 
+        cmd->redirect = 0;
+        cmd->redirect_dest = NULL;
+
         cmd->args_size = 0;
         cmd->args_cap = ARGS_DEFAULT_CAP;
+
         cmd->kind = NOT_BUILT_IN;
 
         cmd->args = malloc(cmd->args_cap * sizeof(char *));
@@ -89,11 +98,21 @@ int main(void)
 
         char *tok = strtok(input, " ");
         while (tok != NULL) {
-            if (cmd->args_size + 1 == cmd->args_cap) {
-                REALLOC_ARR(cmd->args, cmd->args_cap, char *);
-            }
+            if (strcmp(tok, ">") == 0) {
+                cmd->redirect = 1;
+                char *dest = strtok(NULL, " ");
+                if (dest == NULL) {
+                    fprintf(stderr, "Provide redirect destination\n");
+                } else {
+                    cmd->redirect_dest = strdup(dest);
+                }
+            } else {
+                if (cmd->args_size + 1 == cmd->args_cap) {
+                    REALLOC_ARR(cmd->args, cmd->args_cap, char *);
+                }
 
-            cmd->args[cmd->args_size++] = strdup(tok);
+                cmd->args[cmd->args_size++] = strdup(tok);
+            }
 
             tok = strtok(NULL, " ");
         }
@@ -127,6 +146,17 @@ int main(void)
                 if (cid < 0) {
                     fprintf(stderr, "Could not create child process\n");
                 } else if (cid == 0) {
+                    if (cmd->redirect) {
+                        int fd;
+                        if ((fd = open(cmd->redirect_dest, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
+                            fprintf(stderr, "%s\n", strerror(errno));
+                        } else {
+                            dup2(fd, STDOUT_FILENO);
+                            dup2(fd, STDERR_FILENO);
+                            close(fd);
+                        }
+                    }
+
                     execv(path, cmd->args);
                     assert(0 && "Unreachable!\n");
                 } else {
@@ -167,6 +197,8 @@ int main(void)
 
                 case BUILT_IN_DUMP:
                     printf("cmd:\n");
+                    printf("    redirect: %i\n", cmd->redirect);
+                    printf("    redirect_dest: %s\n", cmd->redirect_dest);
                     printf("    args_size: %lu\n", cmd->args_size);
                     printf("    args_cap: %lu\n", cmd->args_cap);
                     printf("    args:\n");
@@ -195,6 +227,7 @@ int main(void)
             free(cmd->args[i]);
         }
         free(cmd->args);
+        free(cmd->redirect_dest);
         free(cmd);
     }
 
