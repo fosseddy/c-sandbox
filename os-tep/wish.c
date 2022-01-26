@@ -14,6 +14,8 @@
 #define PATHS_DEFAULT_CAP 4
 #define DEFAUTL_PATH "/bin"
 
+char *strdup(char *);
+
 enum Built_In_Kind {
     NOT_BUILT_IN = 0,
     BUILT_IN_EXIT,
@@ -57,11 +59,7 @@ int main(void)
     shell->paths = malloc(shell->paths_cap * sizeof(char *));
     assert(shell->paths != NULL);
 
-    char *default_path = malloc((strlen(DEFAUTL_PATH) + 1) * sizeof(char));
-    assert(default_path != NULL);
-
-    strcpy(default_path, DEFAUTL_PATH);
-    shell->paths[shell->paths_size++] = default_path;
+    shell->paths[shell->paths_size++] = strdup(DEFAUTL_PATH);
 
     while (!shell->exit) {
         char input[INPUT_CAP] = {0};
@@ -87,11 +85,7 @@ int main(void)
                 assert(cmd->args != NULL);
             }
 
-            char *arg = malloc((strlen(tok) + 1) * sizeof(char));
-            assert(arg != NULL);
-
-            strcpy(arg, tok);
-            cmd->args[cmd->args_size++] = arg;
+            cmd->args[cmd->args_size++] = strdup(tok);
 
             tok = strtok(NULL, " ");
         }
@@ -148,16 +142,10 @@ int main(void)
                     }
                     shell->paths_size = 0;
                     if (cmd->args[1] == NULL) {
-                        char *p = malloc(sizeof(char));
-                        assert(p != NULL);
-                        strcpy(p, "");
-                        shell->paths[shell->paths_size++] = p;
+                        shell->paths[shell->paths_size++] = strdup("");
                     } else {
                         for (size_t i = 1; i < cmd->args_size - 1; ++i) {
-                            char *p = malloc((strlen(cmd->args[i]) + 1) * sizeof(char));
-                            assert(p != NULL);
-                            strcpy(p, cmd->args[i]);
-                            shell->paths[shell->paths_size++] = p;
+                            shell->paths[shell->paths_size++] = strdup(cmd->args[i]);
                         }
                     }
                     break;
@@ -189,4 +177,14 @@ int main(void)
     free(shell);
 
     return 0;
+}
+
+char *strdup(char *src)
+{
+    char *p = malloc((strlen(src) + 1) * sizeof(char));
+    assert(p != NULL);
+
+    strcpy(p, src);
+
+    return p;
 }
