@@ -12,8 +12,9 @@
 #define INPUT_CAP 1000
 
 #define ARGS_CAP 8
-
+#define CMDS_CAP 4
 #define PATHS_CAP 4
+
 #define DEFAULT_PATH "/bin"
 
 #define REALLOC_ARR(arr, cap, type)             \
@@ -47,6 +48,10 @@ struct Shell {
     size_t paths_cap;
     size_t paths_size;
 
+    struct Cmd *cmds;
+    size_t cmds_cap;
+    size_t cmds_size;
+
     int exit;
 };
 
@@ -73,13 +78,12 @@ int main(void)
 
         if (strlen(input) == 0) continue;
 
-        struct Cmd buf[10] = {0};
-        size_t sz = shell_parse_cmds(input, buf);
+        shell->cmds_size = shell_parse_cmds(input, shell->cmds);
 
-        struct Cmd cmd = buf[0];
+        struct Cmd cmd = shell->cmds[0];
         if (cmd.kind == NOT_BUILT_IN) {
-            for (size_t i = 0; i < sz; ++i) {
-                struct Cmd cmd = buf[i];
+            for (size_t i = 0; i < shell->cmds_size; ++i) {
+                struct Cmd cmd = shell->cmds[i];
                 char *cmd_name = cmd.args[0];
                 char path[100] = {0};
 
@@ -152,12 +156,12 @@ int main(void)
             }
         }
 
-        for (size_t i = 0; i < sz; ++i) {
-            for (size_t j = 0; buf[i].args[j] != NULL; ++j) {
-                free(buf[i].args[j]);
+        for (size_t i = 0; i < shell->cmds_size; ++i) {
+            for (size_t j = 0; shell->cmds[i].args[j] != NULL; ++j) {
+                free(shell->cmds[i].args[j]);
             }
-            free(buf[i].args);
-            free(buf[i].redirect_dest);
+            free(shell->cmds[i].args);
+            free(shell->cmds[i].redirect_dest);
         }
     }
 
@@ -176,6 +180,13 @@ struct Shell *make_shell(void)
     assert(shell != NULL);
 
     shell->exit = 0;
+
+    shell->cmds_size = 0;
+    shell->cmds_cap = CMDS_CAP;
+
+    shell->cmds = malloc(shell->cmds_cap * sizeof(struct Cmd));
+    assert(shell->cmds != NULL);
+
     shell->paths_size = 0;
     shell->paths_cap = PATHS_CAP;
 
@@ -207,6 +218,8 @@ struct Cmd make_cmd(void)
 
 size_t shell_parse_cmds(char *input, struct Cmd *arr)
 {
+    assert(strlen(input) > 0);
+
     size_t size = 0;
     char *tok = strtok(input, " ");
     while (tok != NULL) {
