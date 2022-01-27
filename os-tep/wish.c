@@ -75,6 +75,23 @@ int main(void)
         struct Cmd *cmds = NULL;
         size_t cmds_size = parse_input(input, &cmds);
 
+        if (cmds_size > 1) {
+            int is_valid = 1;
+            for (size_t i = 0; i < cmds_size; ++i) {
+                if (cmds[i].kind != NOT_BUILT_IN) {
+                    is_valid = 0;
+                    break;
+                }
+            }
+
+            if (!is_valid) {
+                fprintf(stderr, "Parallel execution is not allowed "
+                                "with built in commands\n");
+                free_cmds(cmds, cmds_size);
+                continue;
+            }
+        }
+
         struct Cmd cmd = cmds[0];
         if (cmd.kind == NOT_BUILT_IN) {
             for (size_t i = 0; i < cmds_size; ++i) {
