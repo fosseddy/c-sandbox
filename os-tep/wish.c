@@ -15,7 +15,7 @@
 #define CMDS_CAP 4
 #define PATHS_CAP 4
 
-#define DEFAULT_PATH "/bin"
+#define DEFAULT_EXEC_PATH "/bin"
 
 #define REALLOC_ARR(arr, cap, type)             \
     do {                                        \
@@ -43,54 +43,52 @@ struct Cmd {
     char *redirect_dest;
 };
 
-struct Shell {
-    char **paths;
-    size_t paths_cap;
-    size_t paths_size;
-
-    struct Cmd *cmds;
-    size_t cmds_cap;
-    size_t cmds_size;
-
-    int exit;
-};
-
 static char *built_in_cmds[CMD_KIND_LENGTH] = {
-    [NOT_BUILT_IN]  = "",
+    [NOT_BUILT_IN]  = NULL,
     [BUILT_IN_CD]   = "cd",
     [BUILT_IN_EXIT] = "exit",
     [BUILT_IN_PATH] = "path",
 };
 
-struct Shell *make_shell(void);
-struct Cmd make_cmd(void);
-size_t shell_parse_cmds(char *, struct Cmd *);
+size_t parse_cmds(char *, struct Cmd *);
 char *strdup(char *);
 
 int main(void)
 {
-    struct Shell *shell = make_shell();
+    int exit = 0;
 
-    while (!shell->exit) {
+    size_t paths_cap = PATHS_CAP;
+    size_t paths_size = 0;
+    char **paths = malloc(paths_cap * sizeof(char *));
+    assert(paths != NULL);
+
+    paths[paths_size++] = strdup(DEFAULT_EXEC_PATH);
+
+    while (!exit) {
         char input[INPUT_CAP] = {0};
         fgets(input, INPUT_CAP, stdin);
         input[strlen(input) - 1] = '\0';
 
         if (strlen(input) == 0) continue;
 
-        shell->cmds_size = shell_parse_cmds(input, shell->cmds);
+        size_t cmds_cap = CMDS_CAP;
+        size_t cmds_size = 0;
+        struct Cmd *cmds = malloc(cmds_cap * sizeof(struct Cmd));
+        assert(cmds != NULL);
 
-        struct Cmd cmd = shell->cmds[0];
+        cmds_size = parse_cmds(input, cmds);
+
+        struct Cmd cmd = cmds[0];
         if (cmd.kind == NOT_BUILT_IN) {
-            for (size_t i = 0; i < shell->cmds_size; ++i) {
-                struct Cmd cmd = shell->cmds[i];
+            for (size_t i = 0; i < cmds_size; ++i) {
+                struct Cmd cmd = cmds[i];
                 char *cmd_name = cmd.args[0];
                 char path[100] = {0};
 
                 int path_exist = 0;
-                for (size_t j = 0; j < shell->paths_size; ++j) {
-                    assert(strlen(shell->paths[j]) + strlen(cmd_name) < 100);
-                    sprintf(path, "%s/%s", shell->paths[j], cmd_name);
+                for (size_t j = 0; j < paths_size; ++j) {
+                    assert(strlen(paths[j]) + strlen(cmd_name) < 100);
+                    sprintf(path, "%s/%s", paths[j], cmd_name);
                     if ((path_exist = access(path, X_OK)) == 0) break;
                 }
 
@@ -123,22 +121,22 @@ int main(void)
         } else {
             switch (cmd.kind) {
                 case BUILT_IN_EXIT:
-                    shell->exit = 1;
+                    exit = 1;
                     break;
 
                 case BUILT_IN_PATH:
-                    for (size_t i = 0; i < shell->paths_size; ++i) {
-                        free(shell->paths[i]);
+                    for (size_t i = 0; i < paths_size; ++i) {
+                        free(paths[i]);
                     }
-                    shell->paths_size = 0;
+                    paths_size = 0;
                     if (cmd.args[1] == NULL) {
-                        shell->paths[shell->paths_size++] = strdup("");
+                        paths[paths_size++] = strdup("");
                     } else {
                         for (size_t i = 1; i < cmd.args_size - 1; ++i) {
-                            if (shell->paths_size == shell->paths_cap) {
-                                REALLOC_ARR(shell->paths, shell->paths_cap, char *);
+                            if (paths_size == paths_cap) {
+                                REALLOC_ARR(paths, paths_cap, char *);
                             }
-                            shell->paths[shell->paths_size++] = strdup(cmd.args[i]);
+                            paths[paths_size++] = strdup(cmd.args[i]);
                         }
                     }
                     break;
@@ -156,74 +154,37 @@ int main(void)
             }
         }
 
-        for (size_t i = 0; i < shell->cmds_size; ++i) {
-            for (size_t j = 0; shell->cmds[i].args[j] != NULL; ++j) {
-                free(shell->cmds[i].args[j]);
+        for (size_t i = 0; i < cmds_size; ++i) {
+            for (size_t j = 0; cmds[i].args[j] != NULL; ++j) {
+                free(cmds[i].args[j]);
             }
-            free(shell->cmds[i].args);
-            free(shell->cmds[i].redirect_dest);
+            free(cmds[i].args);
+            free(cmds[i].redirect_dest);
         }
     }
-
-    for (size_t i = 0; i < shell->paths_size; ++i) {
-        free(shell->paths[i]);
-    }
-    free(shell->paths);
-    free(shell);
 
     return 0;
 }
 
-struct Shell *make_shell(void)
-{
-    struct Shell *shell = malloc(sizeof(struct Shell));
-    assert(shell != NULL);
-
-    shell->exit = 0;
-
-    shell->cmds_size = 0;
-    shell->cmds_cap = CMDS_CAP;
-
-    shell->cmds = malloc(shell->cmds_cap * sizeof(struct Cmd));
-    assert(shell->cmds != NULL);
-
-    shell->paths_size = 0;
-    shell->paths_cap = PATHS_CAP;
-
-    shell->paths = malloc(shell->paths_cap * sizeof(char *));
-    assert(shell->paths != NULL);
-
-    shell->paths[shell->paths_size++] = strdup(DEFAULT_PATH);
-
-    return shell;
-}
-
-struct Cmd make_cmd(void)
-{
-    struct Cmd cmd = (struct Cmd) {
-        .redirect = 0,
-        .redirect_dest = NULL,
-
-        .args_size = 0,
-        .args_cap = ARGS_CAP,
-
-        .kind = NOT_BUILT_IN
-    };
-
-    cmd.args = malloc(cmd.args_cap * sizeof(char *));
-    assert(cmd.args != NULL);
-
-    return cmd;
-}
-
-size_t shell_parse_cmds(char *input, struct Cmd *arr)
+size_t parse_cmds(char *input, struct Cmd *arr)
 {
     assert(strlen(input) > 0);
 
     size_t size = 0;
     char *tok = strtok(input, " ");
     while (tok != NULL) {
-        struct Cmd cmd = make_cmd();
+        struct Cmd cmd = (struct Cmd) {
+            .redirect = 0,
+            .redirect_dest = NULL,
+
+            .args_size = 0,
+            .args_cap = ARGS_CAP,
+
+            .kind = NOT_BUILT_IN
+        };
+
+        cmd.args = malloc(cmd.args_cap * sizeof(char *));
+        assert(cmd.args != NULL);
 
         while (tok != NULL) {
             if (strcmp(tok, ">") == 0) {
