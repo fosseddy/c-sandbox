@@ -91,8 +91,7 @@ int main(void)
             }
         }
 
-        struct Cmd cmd = cmds[0];
-        if (cmd.kind == NOT_BUILT_IN) {
+        if (cmds[0].kind == NOT_BUILT_IN) {
             for (size_t i = 0; i < cmds_size; ++i) {
                 struct Cmd cmd = cmds[i];
                 char *cmd_name = cmd.args[0];
@@ -132,6 +131,7 @@ int main(void)
 
             while (waitpid(-1, NULL, 0) > 0);
         } else {
+            struct Cmd cmd = cmds[0];
             switch (cmd.kind) {
                 case BUILT_IN_EXIT:
                     exit = 1;
