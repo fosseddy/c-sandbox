@@ -11,10 +11,10 @@
 
 #define INPUT_CAP 1000
 
-#define ARGS_DEFAULT_CAP 8
+#define ARGS_CAP 8
 
-#define PATHS_DEFAULT_CAP 4
-#define DEFAUTL_PATH "/bin"
+#define PATHS_CAP 4
+#define DEFAULT_PATH "/bin"
 
 #define REALLOC_ARR(arr, cap, type)             \
     do {                                        \
@@ -29,13 +29,6 @@ enum Cmd_Kind {
     BUILT_IN_PATH,
     BUILT_IN_CD,
     CMD_KIND_LENGTH,
-};
-
-static char *built_in_cmds[CMD_KIND_LENGTH] = {
-    [NOT_BUILT_IN]  = "",
-    [BUILT_IN_CD]   = "cd",
-    [BUILT_IN_EXIT] = "exit",
-    [BUILT_IN_PATH] = "path",
 };
 
 struct Cmd {
@@ -57,21 +50,20 @@ struct Shell {
     int exit;
 };
 
+static char *built_in_cmds[CMD_KIND_LENGTH] = {
+    [NOT_BUILT_IN]  = "",
+    [BUILT_IN_CD]   = "cd",
+    [BUILT_IN_EXIT] = "exit",
+    [BUILT_IN_PATH] = "path",
+};
+
+struct Shell *make_shell(void);
+struct Cmd *make_cmd(void);
 char *strdup(char *);
 
 int main(void)
 {
-    struct Shell *shell = malloc(sizeof(struct Shell));
-    assert(shell != NULL);
-
-    shell->exit = 0;
-    shell->paths_size = 0;
-    shell->paths_cap = PATHS_DEFAULT_CAP;
-
-    shell->paths = malloc(shell->paths_cap * sizeof(char *));
-    assert(shell->paths != NULL);
-
-    shell->paths[shell->paths_size++] = strdup(DEFAUTL_PATH);
+    struct Shell *shell = make_shell();
 
     while (!shell->exit) {
         char input[INPUT_CAP] = {0};
@@ -85,19 +77,7 @@ int main(void)
         char *tok = strtok(input, " ");
 
         while (tok != NULL) {
-            struct Cmd *cmd = malloc(sizeof(struct Cmd));
-            assert(cmd != NULL);
-
-            cmd->redirect = 0;
-            cmd->redirect_dest = NULL;
-
-            cmd->args_size = 0;
-            cmd->args_cap = ARGS_DEFAULT_CAP;
-
-            cmd->kind = NOT_BUILT_IN;
-
-            cmd->args = malloc(cmd->args_cap * sizeof(char *));
-            assert(cmd->args != NULL);
+            struct Cmd *cmd = make_cmd();
 
             while (tok != NULL) {
                 if (strcmp(tok, ">") == 0) {
@@ -229,6 +209,42 @@ int main(void)
     free(shell);
 
     return 0;
+}
+
+struct Shell *make_shell(void)
+{
+    struct Shell *shell = malloc(sizeof(struct Shell));
+    assert(shell != NULL);
+
+    shell->exit = 0;
+    shell->paths_size = 0;
+    shell->paths_cap = PATHS_CAP;
+
+    shell->paths = malloc(shell->paths_cap * sizeof(char *));
+    assert(shell->paths != NULL);
+
+    shell->paths[shell->paths_size++] = strdup(DEFAULT_PATH);
+
+    return shell;
+}
+
+struct Cmd *make_cmd(void)
+{
+    struct Cmd *cmd = malloc(sizeof(struct Cmd));
+    assert(cmd != NULL);
+
+    cmd->redirect = 0;
+    cmd->redirect_dest = NULL;
+
+    cmd->args_size = 0;
+    cmd->args_cap = ARGS_CAP;
+
+    cmd->args = malloc(cmd->args_cap * sizeof(char *));
+    assert(cmd->args != NULL);
+
+    cmd->kind = NOT_BUILT_IN;
+
+    return cmd;
 }
 
 char *strdup(char *src)
