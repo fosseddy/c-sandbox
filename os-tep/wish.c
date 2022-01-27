@@ -34,7 +34,6 @@ enum Cmd_Kind {
 
 struct Cmd {
     char **args;
-    size_t args_cap;
     size_t args_size;
 
     enum Cmd_Kind kind;
@@ -189,12 +188,12 @@ size_t parse_input(char *input, struct Cmd **bufptr)
 
             .args = NULL,
             .args_size = 0,
-            .args_cap = ARGS_CAP,
 
             .kind = NOT_BUILT_IN
         };
 
-        cmd.args = malloc(cmd.args_cap * sizeof(char *));
+        size_t args_cap = ARGS_CAP;
+        cmd.args = malloc(args_cap * sizeof(char *));
         assert(cmd.args != NULL);
 
         while (tok != NULL) {
@@ -210,8 +209,8 @@ size_t parse_input(char *input, struct Cmd **bufptr)
                 tok = strtok(NULL, " ");
                 break;
             } else {
-                if (cmd.args_size + 1 == cmd.args_cap) {
-                    REALLOC_ARR(cmd.args, cmd.args_cap, char *);
+                if (cmd.args_size + 1 == args_cap) {
+                    REALLOC_ARR(cmd.args, args_cap, char *);
                 }
 
                 cmd.args[cmd.args_size++] = strdup(tok);
