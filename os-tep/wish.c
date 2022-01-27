@@ -33,13 +33,12 @@ enum Cmd_Kind {
 };
 
 struct Cmd {
-    char **args;
-    size_t args_size;
-
-    enum Cmd_Kind kind;
-
     int redirect;
     char *redirect_dest;
+
+    char **args;
+
+    enum Cmd_Kind kind;
 };
 
 static char *built_in_cmds[CMD_KIND_LENGTH] = {
@@ -146,7 +145,7 @@ int main(void)
                     if (cmd.args[1] == NULL) {
                         paths[paths_size++] = strdup("");
                     } else {
-                        for (size_t i = 1; i < cmd.args_size - 1; ++i) {
+                        for (size_t i = 1; cmd.args[i] != NULL; ++i) {
                             if (paths_size == paths_cap) {
                                 REALLOC_ARR(paths, paths_cap, char *);
                             }
@@ -181,10 +180,10 @@ size_t parse_input(char *input, struct Cmd **bufptr)
     assert(strlen(input) > 0);
     assert(*bufptr == NULL);
 
-    size_t size = 0;
-    size_t cap = CMDS_CAP;
+    size_t buf_size = 0;
+    size_t buf_cap = CMDS_CAP;
 
-    *bufptr = malloc(cap * sizeof(struct Cmd));
+    *bufptr = malloc(buf_cap * sizeof(struct Cmd));
     assert(*bufptr != NULL);
 
     char *tok = strtok(input, " ");
@@ -192,14 +191,12 @@ size_t parse_input(char *input, struct Cmd **bufptr)
         struct Cmd cmd = (struct Cmd) {
             .redirect = 0,
             .redirect_dest = NULL,
-
             .args = NULL,
-            .args_size = 0,
-
             .kind = NOT_BUILT_IN
         };
 
         size_t args_cap = ARGS_CAP;
+        size_t args_size = 0;
         cmd.args = malloc(args_cap * sizeof(char *));
         assert(cmd.args != NULL);
 
@@ -216,33 +213,33 @@ size_t parse_input(char *input, struct Cmd **bufptr)
                 tok = strtok(NULL, " ");
                 break;
             } else {
-                if (cmd.args_size + 1 == args_cap) {
+                if (args_size + 1 == args_cap) {
                     REALLOC_ARR(cmd.args, args_cap, char *);
                 }
 
-                cmd.args[cmd.args_size++] = strdup(tok);
+                for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
+                    if (strcmp(tok, built_in_cmds[i]) == 0) {
+                        cmd.kind = i;
+                        break;
+                    }
+                }
+
+                cmd.args[args_size++] = strdup(tok);
             }
 
             tok = strtok(NULL, " ");
         }
 
-        cmd.args[cmd.args_size++] = NULL;
+        cmd.args[args_size++] = NULL;
 
-        for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
-            if (strcmp(cmd.args[0], built_in_cmds[i]) == 0) {
-                cmd.kind = i;
-                break;
-            }
+        if (buf_size == buf_cap) {
+            REALLOC_ARR(*bufptr, buf_cap, struct Cmd);
         }
 
-        if (size == cap) {
-            REALLOC_ARR(*bufptr, cap, struct Cmd);
-        }
-
-        (*bufptr)[size++] = cmd;
+        (*bufptr)[buf_size++] = cmd;
     }
 
-    return size;
+    return buf_size;
 }
 
 void free_cmds(struct Cmd *cmds, size_t size)
