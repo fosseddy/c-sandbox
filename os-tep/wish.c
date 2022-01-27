@@ -50,6 +50,8 @@ static char *built_in_cmds[CMD_KIND_LENGTH] = {
 };
 
 size_t parse_input(char *, struct Cmd **);
+void free_cmds(struct Cmd *, size_t);
+void free_paths(char **, size_t);
 char *strdup(char *);
 
 int main(void)
@@ -149,22 +151,10 @@ int main(void)
             }
         }
 
-        for (size_t i = 0; i < cmds_size; ++i) {
-            for (size_t j = 0; cmds[i].args[j] != NULL; ++j) {
-                free(cmds[i].args[j]);
-            }
-            free(cmds[i].args);
-            free(cmds[i].redirect_dest);
-        }
-
-        free(cmds);
+        free_cmds(cmds, cmds_size);
     }
 
-    for (size_t i = 0; i < paths_size; ++i) {
-        free(paths[i]);
-    }
-
-    free(paths);
+    free_paths(paths, paths_size);
 
     return 0;
 }
@@ -236,6 +226,28 @@ size_t parse_input(char *input, struct Cmd **bufptr)
     }
 
     return size;
+}
+
+void free_cmds(struct Cmd *cmds, size_t size)
+{
+    for (size_t i = 0; i < size; ++i) {
+        for (size_t j = 0; cmds[i].args[j] != NULL; ++j) {
+            free(cmds[i].args[j]);
+        }
+        free(cmds[i].args);
+        free(cmds[i].redirect_dest);
+    }
+
+    free(cmds);
+}
+
+void free_paths(char **paths, size_t size)
+{
+    for (size_t i = 0; i < size; ++i) {
+        free(paths[i]);
+    }
+
+    free(paths);
 }
 
 char *strdup(char *src)
