@@ -50,7 +50,7 @@ static char *built_in_cmds[CMD_KIND_LENGTH] = {
     [BUILT_IN_PATH] = "path",
 };
 
-void parse_cmds(char *, struct Cmd **, size_t *, size_t *);
+size_t parse_input(char *, struct Cmd **);
 char *strdup(char *);
 
 int main(void)
@@ -71,11 +71,8 @@ int main(void)
 
         if (strlen(input) == 0) continue;
 
-        size_t cmds_cap = CMDS_CAP;
-        size_t cmds_size = 0;
         struct Cmd *cmds = NULL;
-
-        parse_cmds(input, &cmds, &cmds_size, &cmds_cap);
+        size_t cmds_size = parse_input(input, &cmds);
 
         struct Cmd cmd = cmds[0];
         if (cmd.kind == NOT_BUILT_IN) {
@@ -173,13 +170,16 @@ int main(void)
     return 0;
 }
 
-void parse_cmds(char *input, struct Cmd **arr, size_t *size, size_t *cap)
+size_t parse_input(char *input, struct Cmd **bufptr)
 {
     assert(strlen(input) > 0);
-    assert(*arr == NULL);
+    assert(*bufptr == NULL);
 
-    *arr = malloc(*cap * sizeof(struct Cmd));
-    assert(*arr != NULL);
+    size_t size = 0;
+    size_t cap = CMDS_CAP;
+
+    *bufptr = malloc(cap * sizeof(struct Cmd));
+    assert(*bufptr != NULL);
 
     char *tok = strtok(input, " ");
     while (tok != NULL) {
@@ -187,6 +187,7 @@ void parse_cmds(char *input, struct Cmd **arr, size_t *size, size_t *cap)
             .redirect = 0,
             .redirect_dest = NULL,
 
+            .args = NULL,
             .args_size = 0,
             .args_cap = ARGS_CAP,
 
@@ -198,11 +199,11 @@ void parse_cmds(char *input, struct Cmd **arr, size_t *size, size_t *cap)
 
         while (tok != NULL) {
             if (strcmp(tok, ">") == 0) {
-                cmd.redirect = 1;
                 char *dest = strtok(NULL, " ");
                 if (dest == NULL) {
                     fprintf(stderr, "Provide redirect destination\n");
                 } else {
+                    cmd.redirect = 1;
                     cmd.redirect_dest = strdup(dest);
                 }
             } else if (strcmp(tok, "&") == 0) {
@@ -228,12 +229,14 @@ void parse_cmds(char *input, struct Cmd **arr, size_t *size, size_t *cap)
             }
         }
 
-        if (*size == *cap) {
-            REALLOC_ARR(*arr, *cap, struct Cmd);
+        if (size == cap) {
+            REALLOC_ARR(*bufptr, cap, struct Cmd);
         }
 
-        (*arr)[(*size)++] = cmd;
+        (*bufptr)[size++] = cmd;
     }
+
+    return size;
 }
 
 char *strdup(char *src)
