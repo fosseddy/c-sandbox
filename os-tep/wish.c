@@ -59,6 +59,7 @@ static char *built_in_cmds[CMD_KIND_LENGTH] = {
 
 struct Shell *make_shell(void);
 struct Cmd *make_cmd(void);
+size_t shell_parse_cmds(char *, struct Cmd **);
 char *strdup(char *);
 
 int main(void)
@@ -73,48 +74,7 @@ int main(void)
         if (strlen(input) == 0) continue;
 
         struct Cmd *buf[10] = {0};
-        size_t sz = 0;
-        char *tok = strtok(input, " ");
-
-        while (tok != NULL) {
-            struct Cmd *cmd = make_cmd();
-
-            while (tok != NULL) {
-                if (strcmp(tok, ">") == 0) {
-                    cmd->redirect = 1;
-                    char *dest = strtok(NULL, " ");
-                    if (dest == NULL) {
-                        fprintf(stderr, "Provide redirect destination\n");
-                    } else {
-                        cmd->redirect_dest = strdup(dest);
-                    }
-                } else if (strcmp(tok, "&") == 0) {
-                    tok = strtok(NULL, " ");
-                    break;
-                } else {
-                    if (cmd->args_size + 1 == cmd->args_cap) {
-                        REALLOC_ARR(cmd->args, cmd->args_cap, char *);
-                    }
-
-                    cmd->args[cmd->args_size++] = strdup(tok);
-                }
-
-                tok = strtok(NULL, " ");
-            }
-
-            cmd->args[cmd->args_size++] = NULL;
-
-            char *cmd_name = cmd->args[0];
-
-            for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
-                if (strcmp(cmd_name, built_in_cmds[i]) == 0) {
-                    cmd->kind = i;
-                    break;
-                }
-            }
-
-            buf[sz++] = cmd;
-        }
+        size_t sz = shell_parse_cmds(input, buf);
 
         struct Cmd *cmd = buf[0];
         if (cmd->kind == NOT_BUILT_IN) {
@@ -245,6 +205,51 @@ struct Cmd *make_cmd(void)
     cmd->kind = NOT_BUILT_IN;
 
     return cmd;
+}
+
+size_t shell_parse_cmds(char *input, struct Cmd **arr)
+{
+    size_t size = 0;
+    char *tok = strtok(input, " ");
+    while (tok != NULL) {
+        struct Cmd *cmd = make_cmd();
+
+        while (tok != NULL) {
+            if (strcmp(tok, ">") == 0) {
+                cmd->redirect = 1;
+                char *dest = strtok(NULL, " ");
+                if (dest == NULL) {
+                    fprintf(stderr, "Provide redirect destination\n");
+                } else {
+                    cmd->redirect_dest = strdup(dest);
+                }
+            } else if (strcmp(tok, "&") == 0) {
+                tok = strtok(NULL, " ");
+                break;
+            } else {
+                if (cmd->args_size + 1 == cmd->args_cap) {
+                    REALLOC_ARR(cmd->args, cmd->args_cap, char *);
+                }
+
+                cmd->args[cmd->args_size++] = strdup(tok);
+            }
+
+            tok = strtok(NULL, " ");
+        }
+
+        cmd->args[cmd->args_size++] = NULL;
+
+        for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
+            if (strcmp(cmd->args[0], built_in_cmds[i]) == 0) {
+                cmd->kind = i;
+                break;
+            }
+        }
+
+        arr[size++] = cmd;
+    }
+
+    return size;
 }
 
 char *strdup(char *src)
