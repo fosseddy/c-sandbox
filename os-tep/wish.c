@@ -50,7 +50,7 @@ static char *built_in_cmds[CMD_KIND_LENGTH] = {
     [BUILT_IN_PATH] = "path",
 };
 
-size_t parse_cmds(char *, struct Cmd *);
+void parse_cmds(char *, struct Cmd **, size_t *, size_t *);
 char *strdup(char *);
 
 int main(void)
@@ -73,10 +73,9 @@ int main(void)
 
         size_t cmds_cap = CMDS_CAP;
         size_t cmds_size = 0;
-        struct Cmd *cmds = malloc(cmds_cap * sizeof(struct Cmd));
-        assert(cmds != NULL);
+        struct Cmd *cmds = NULL;
 
-        cmds_size = parse_cmds(input, cmds);
+        parse_cmds(input, &cmds, &cmds_size, &cmds_cap);
 
         struct Cmd cmd = cmds[0];
         if (cmd.kind == NOT_BUILT_IN) {
@@ -161,16 +160,27 @@ int main(void)
             free(cmds[i].args);
             free(cmds[i].redirect_dest);
         }
+
+        free(cmds);
     }
+
+    for (size_t i = 0; i < paths_size; ++i) {
+        free(paths[i]);
+    }
+
+    free(paths);
 
     return 0;
 }
 
-size_t parse_cmds(char *input, struct Cmd *arr)
+void parse_cmds(char *input, struct Cmd **arr, size_t *size, size_t *cap)
 {
     assert(strlen(input) > 0);
+    assert(*arr == NULL);
 
-    size_t size = 0;
+    *arr = malloc(*cap * sizeof(struct Cmd));
+    assert(*arr != NULL);
+
     char *tok = strtok(input, " ");
     while (tok != NULL) {
         struct Cmd cmd = (struct Cmd) {
@@ -218,10 +228,12 @@ size_t parse_cmds(char *input, struct Cmd *arr)
             }
         }
 
-        arr[size++] = cmd;
-    }
+        if (*size == *cap) {
+            REALLOC_ARR(*arr, *cap, struct Cmd);
+        }
 
-    return size;
+        (*arr)[(*size)++] = cmd;
+    }
 }
 
 char *strdup(char *src)
