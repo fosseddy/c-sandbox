@@ -197,6 +197,7 @@ size_t parse_input(char *input, struct Cmd **bufptr)
 
         size_t args_cap = ARGS_CAP;
         size_t args_size = 0;
+
         cmd.args = malloc(args_cap * sizeof(char *));
         assert(cmd.args != NULL);
 
@@ -213,15 +214,15 @@ size_t parse_input(char *input, struct Cmd **bufptr)
                 tok = strtok(NULL, " ");
                 break;
             } else {
-                if (args_size + 1 == args_cap) {
-                    REALLOC_ARR(cmd.args, args_cap, char *);
-                }
-
                 for (enum Cmd_Kind i = 1; i < CMD_KIND_LENGTH; ++i) {
                     if (strcmp(tok, built_in_cmds[i]) == 0) {
                         cmd.kind = i;
                         break;
                     }
+                }
+
+                if (args_size + 1 == args_cap) {
+                    REALLOC_ARR(cmd.args, args_cap, char *);
                 }
 
                 cmd.args[args_size++] = strdup(tok);
