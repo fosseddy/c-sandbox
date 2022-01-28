@@ -230,6 +230,15 @@ char **execute_path_cmd(char **args, char **paths, size_t *paths_size)
     return paths;
 }
 
+int execute_cd_cmd(char *dir_name)
+{
+    if (dir_name == NULL) {
+        return -1;
+    }
+
+    return chdir(dir_name);
+}
+
 int main(void)
 {
     int exit = 0;
@@ -277,11 +286,8 @@ int main(void)
                     break;
 
                 case BUILT_IN_CD: {
-                    char *dir_name = cmd->args[1];
-                    if (dir_name == NULL) {
+                    if (execute_cd_cmd(cmd->args[1]) < 0) {
                         fprintf(stderr, "No such file or directory\n");
-                    } else if (chdir(dir_name) < 0) {
-                        fprintf(stderr, "%s\n", strerror(errno));
                     }
                 } break;
 
