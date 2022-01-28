@@ -49,6 +49,7 @@ static char *built_in_cmds[CMD_KIND_LENGTH] = {
 };
 
 size_t parse_input(char *, struct Cmd **);
+void execute_cmd(struct Cmd *, char **, size_t);
 void free_cmds(struct Cmd *, size_t);
 void free_paths(char **, size_t);
 char *strdup(char *);
@@ -93,42 +94,8 @@ int main(void)
 
         if (cmds[0].kind == NOT_BUILT_IN) {
             for (size_t i = 0; i < cmds_size; ++i) {
-                struct Cmd cmd = cmds[i];
-                char *cmd_name = cmd.args[0];
-                char path[100] = {0};
-
-                int path_exist = 0;
-                for (size_t j = 0; j < paths_size; ++j) {
-                    assert(strlen(paths[j]) + strlen(cmd_name) < 100);
-                    sprintf(path, "%s/%s", paths[j], cmd_name);
-                    if ((path_exist = access(path, X_OK)) == 0) break;
-                }
-
-                if (path_exist < 0) {
-                    fprintf(stderr, "command `%s` not found\n", cmd_name);
-                } else {
-                    pid_t cid = fork();
-
-                    if (cid < 0) {
-                        fprintf(stderr, "Could not create child process\n");
-                    } else if (cid == 0) {
-                        if (cmd.redirect) {
-                            int fd;
-                            if ((fd = open(cmd.redirect_dest, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
-                                fprintf(stderr, "%s\n", strerror(errno));
-                            } else {
-                                dup2(fd, STDOUT_FILENO);
-                                dup2(fd, STDERR_FILENO);
-                                close(fd);
-                            }
-                        }
-
-                        execv(path, cmd.args);
-                        assert(0 && "Unreachable!\n");
-                    }
-                }
+                execute_cmd(&cmds[i], paths, paths_size);
             }
-
             while (waitpid(-1, NULL, 0) > 0);
         } else {
             struct Cmd cmd = cmds[0];
@@ -241,6 +208,55 @@ size_t parse_input(char *input, struct Cmd **bufptr)
     }
 
     return buf_size;
+}
+
+void execute_cmd(struct Cmd *cmd, char **paths, size_t paths_size)
+{
+    char *cmd_name = cmd->args[0];
+
+    char *exec_path = NULL;
+    int path_exist = -1;
+
+    for (size_t i = 0; i < paths_size; ++i) {
+        char *path = paths[i];
+        if (strlen(path) == 0) continue;
+
+        int path_size = strlen(path) + strlen(cmd_name);
+        exec_path = calloc(path_size + 2, sizeof(char));
+        sprintf(exec_path, "%s/%s", path, cmd_name);
+
+        if ((path_exist = access(exec_path, X_OK)) == 0) break;
+        free(exec_path);
+    }
+
+    if (path_exist < 0) {
+        fprintf(stderr, "command `%s` not found\n", cmd_name);
+        return;
+    }
+
+    pid_t cid = fork();
+
+    if (cid < 0) {
+        fprintf(stderr, "Could not create child process\n");
+    } else if (cid == 0) {
+        if (cmd->redirect) {
+            int fd;
+            int flags = O_WRONLY | O_TRUNC | O_CREAT;
+            int mode = S_IRUSR | S_IWUSR;
+            if ((fd = open(cmd->redirect_dest, flags, mode)) < 0) {
+                fprintf(stderr, "%s\n", strerror(errno));
+            } else {
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+                close(fd);
+            }
+        }
+
+        execv(exec_path, cmd->args);
+        assert(0 && "Unreachable!\n");
+    }
+
+    free(exec_path);
 }
 
 void free_cmds(struct Cmd *cmds, size_t size)
