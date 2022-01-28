@@ -33,10 +33,10 @@ enum Cmd_Kind {
 };
 
 struct Cmd {
+    enum Cmd_Kind kind;
+    char **args;
     int redirect;
     char *redirect_dest;
-    char **args;
-    enum Cmd_Kind kind;
 };
 
 static char *built_in_cmds[CMD_KIND_LENGTH] = {
@@ -206,26 +206,26 @@ void execute_cmd(struct Cmd *cmd, char *exec_path)
     }
 }
 
-char **execute_path_cmd(char **args, char **paths, size_t *paths_size)
+char **execute_path_cmd(char **new_paths, char **paths, size_t *size)
 {
-    free_paths(paths, *paths_size);
+    free_paths(paths, *size);
 
-    size_t paths_cap = PATHS_CAP;
-    *paths_size = 0;
+    size_t cap = PATHS_CAP;
+    *size = 0;
 
-    paths = malloc(paths_cap * sizeof(char *));
+    paths = malloc(cap * sizeof(char *));
     assert(paths != NULL);
 
-    if (args[1] == NULL) {
-        paths[(*paths_size)++] = strdup("");
+    if (new_paths[1] == NULL) {
+        paths[(*size)++] = strdup("");
         return paths;
     }
 
-    for (size_t i = 1; args[i] != NULL; ++i) {
-        if (*paths_size == paths_cap) {
-            REALLOC_ARR(paths, paths_cap, char *);
+    for (size_t i = 1; new_paths[i] != NULL; ++i) {
+        if (*size == cap) {
+            REALLOC_ARR(paths, cap, char *);
         }
-        paths[(*paths_size)++] = strdup(args[i]);
+        paths[(*size)++] = strdup(new_paths[i]);
     }
 
     return paths;
