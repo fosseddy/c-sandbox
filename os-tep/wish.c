@@ -168,6 +168,8 @@ char *find_exec_path(char *cmd_name, char **paths, size_t size)
 
         int path_size = strlen(path) + strlen(cmd_name) + 2;
         exec_path = calloc(path_size, sizeof(char));
+        assert(exec_path != NULL);
+
         sprintf(exec_path, "%s/%s", path, cmd_name);
 
         if ((path_exist = access(exec_path, X_OK)) == 0) break;
