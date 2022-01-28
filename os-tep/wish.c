@@ -157,19 +157,17 @@ size_t parse_input(char *input, struct Cmd **bufptr)
     return buf_size;
 }
 
-void execute_cmd(struct Cmd *cmd, char **paths, size_t paths_size)
+char *find_exec_path(char *cmd_name, char **paths, size_t size)
 {
-    char *cmd_name = cmd->args[0];
-
     char *exec_path = NULL;
     int path_exist = -1;
 
-    for (size_t i = 0; i < paths_size; ++i) {
+    for (size_t i = 0; i < size; ++i) {
         char *path = paths[i];
         if (strlen(path) == 0) continue;
 
-        int path_size = strlen(path) + strlen(cmd_name);
-        exec_path = calloc(path_size + 2, sizeof(char));
+        int path_size = strlen(path) + strlen(cmd_name) + 2;
+        exec_path = calloc(path_size, sizeof(char));
         sprintf(exec_path, "%s/%s", path, cmd_name);
 
         if ((path_exist = access(exec_path, X_OK)) == 0) break;
@@ -177,10 +175,14 @@ void execute_cmd(struct Cmd *cmd, char **paths, size_t paths_size)
     }
 
     if (path_exist < 0) {
-        fprintf(stderr, "command `%s` not found\n", cmd_name);
-        return;
+        return NULL;
     }
 
+    return exec_path;
+}
+
+void execute_cmd(struct Cmd *cmd, char *exec_path)
+{
     pid_t cid = fork();
 
     if (cid < 0) {
@@ -202,8 +204,6 @@ void execute_cmd(struct Cmd *cmd, char **paths, size_t paths_size)
         execv(exec_path, cmd->args);
         assert(0 && "Unreachable!\n");
     }
-
-    free(exec_path);
 }
 
 char **execute_path_cmd(char **args, char **paths, size_t *paths_size)
@@ -243,9 +243,8 @@ int main(void)
 {
     int exit = 0;
 
-    size_t paths_cap = PATHS_CAP;
     size_t paths_size = 0;
-    char **paths = malloc(paths_cap * sizeof(char *));
+    char **paths = malloc(PATHS_CAP * sizeof(char *));
     assert(paths != NULL);
 
     paths[paths_size++] = strdup(DEFAULT_EXEC_PATH);
@@ -271,7 +270,14 @@ int main(void)
 
         if (cmds[0].kind == NOT_BUILT_IN) {
             for (size_t i = 0; i < cmds_size; ++i) {
-                execute_cmd(&cmds[i], paths, paths_size);
+                char *cmd_name = cmds[i].args[0];
+                char *exec_path = find_exec_path(cmd_name, paths, paths_size);
+                if (exec_path == NULL) {
+                    fprintf(stderr, "command `%s` not found\n", cmd_name);
+                } else {
+                    execute_cmd(&cmds[i], exec_path);
+                    free(exec_path);
+                }
             }
             while (waitpid(-1, NULL, 0) > 0);
         } else {
