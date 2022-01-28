@@ -275,21 +275,21 @@ int main(void)
             }
             while (waitpid(-1, NULL, 0) > 0);
         } else {
-            struct Cmd *cmd = &cmds[0];
-            switch (cmd->kind) {
+            struct Cmd cmd = cmds[0];
+            switch (cmd.kind) {
                 case BUILT_IN_EXIT:
                     exit = 1;
                     break;
 
                 case BUILT_IN_PATH:
-                    paths = execute_path_cmd(cmd->args, paths, &paths_size);
+                    paths = execute_path_cmd(cmd.args, paths, &paths_size);
                     break;
 
-                case BUILT_IN_CD: {
-                    if (execute_cd_cmd(cmd->args[1]) < 0) {
+                case BUILT_IN_CD:
+                    if (execute_cd_cmd(cmd.args[1]) < 0) {
                         fprintf(stderr, "No such file or directory\n");
                     }
-                } break;
+                    break;
 
                 default: assert(0 && "Unreachable\n");
             }
