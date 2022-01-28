@@ -218,13 +218,14 @@ char **execute_path_cmd(char **args, char **paths, size_t *paths_size)
 
     if (args[1] == NULL) {
         paths[(*paths_size)++] = strdup("");
-    } else {
-        for (size_t i = 1; args[i] != NULL; ++i) {
-            if (*paths_size == paths_cap) {
-                REALLOC_ARR(paths, paths_cap, char *);
-            }
-            paths[(*paths_size)++] = strdup(args[i]);
+        return paths;
+    }
+
+    for (size_t i = 1; args[i] != NULL; ++i) {
+        if (*paths_size == paths_cap) {
+            REALLOC_ARR(paths, paths_cap, char *);
         }
+        paths[(*paths_size)++] = strdup(args[i]);
     }
 
     return paths;
