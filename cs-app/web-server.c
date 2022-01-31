@@ -8,6 +8,12 @@
 
 int main(void)
 {
+    printf("hello, world\n");
+    return 0;
+}
+
+int main2(void)
+{
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         fprintf(stderr, "%s\n", strerror(errno));
