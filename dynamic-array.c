@@ -130,7 +130,6 @@ int main(void)
 
     printf("\n");
 
-    printf("integer array\n");
     struct Dynarr *iarr = NULL;
     make_dynarr(iarr, int);
 
@@ -138,6 +137,7 @@ int main(void)
         dynarr_puti(iarr, i);
     }
 
+    printf("integer array\n");
     printf("size: %lu\n", iarr->size);
     printf("capacity: %lu\n", iarr->cap);
     printf("values:\n");
