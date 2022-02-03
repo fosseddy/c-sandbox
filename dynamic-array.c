@@ -2,83 +2,151 @@
 #include <stdlib.h>
 #include <assert.h>
 
-struct Dyn_Arr {
-    size_t size;
-    size_t cap;
-    int *values;
+struct Dynarr {
+    size_t size, cap;
+    void *values;
 };
 
 #define START_CAP 8
-struct Dyn_Arr *make_dyn_arr(void)
-{
-    struct Dyn_Arr *arr = malloc(sizeof(struct Dyn_Arr));
-    assert(arr != NULL);
 
-    arr->size = 0;
-    arr->cap = START_CAP;
+#define make_dynarr(arr, type)                          \
+    do {                                                \
+        arr = malloc(sizeof(struct Dynarr));            \
+        assert(arr != NULL);                            \
+        arr->size = 0;                                  \
+        arr->cap = START_CAP;                           \
+        type *values = malloc(arr->cap * sizeof(type)); \
+        assert(values != NULL);                         \
+        arr->values = values;                           \
+    } while (0);                                        \
 
-    int *values = malloc(arr->cap * sizeof(int));
-    assert(values != NULL);
+#define dynarr_put(arr, type, v)                                         \
+    do {                                                                 \
+        assert(arr->size <= arr->cap);                                   \
+        if (arr->size == arr->cap) {                                     \
+            arr->cap *= 2;                                               \
+            arr->values = realloc(arr->values, arr->cap * sizeof(type)); \
+            assert(arr->values != NULL);                                 \
+        }                                                                \
+        ((type *) arr->values)[arr->size++] = v;                         \
+    } while (0);                                                         \
 
-    arr->values = values;
+#define dynarr_get(arr, type, i, val)    \
+    do {                                 \
+        assert(i < dynarr_size(arr));    \
+        val = ((type *) arr->values)[i]; \
+    } while (0);                         \
 
-    return arr;
-}
-
-void free_dyn_arr(struct Dyn_Arr *arr)
+void free_dynarr(struct Dynarr *arr)
 {
     free(arr->values);
     free(arr);
 }
 
-void dyn_arr_debug(struct Dyn_Arr *arr)
+size_t dynarr_size(struct Dynarr *arr)
 {
-    printf("size: %lu\n", arr->size);
-    printf("capacity: %lu\n", arr->cap);
-    printf("values:\n");
-    for (size_t i = 0; i < arr->size; ++i) {
-        printf("  %i\n", arr->values[i]);
-    }
+    return arr->size;
 }
 
-void dyn_arr_put(struct Dyn_Arr *arr, int value)
+struct Point {
+    int x, y;
+};
+
+void dynarr_putpoint(struct Dynarr *arr, struct Point v)
 {
-    assert(arr->size <= arr->cap);
+    dynarr_put(arr, struct Point, v);
+}
 
-    if (arr->size == arr->cap) {
-        arr->cap *= 2;
+struct Point dynarr_getpoint(struct Dynarr *arr, size_t i)
+{
+    struct Point p;
+    dynarr_get(arr, struct Point, i, p);
+    return p;
+}
 
-        int *values = malloc(arr->cap * sizeof(int));
-        assert(values != NULL);
+void dynarr_puts(struct Dynarr *arr, char *v)
+{
+    dynarr_put(arr, char *, v);
+}
 
-        for (size_t i = 0; i < arr->size; ++i) {
-            values[i] = arr->values[i];
-        }
+char *dynarr_gets(struct Dynarr *arr, size_t i)
+{
+    char *s;
+    dynarr_get(arr, char *, i, s);
+    return s;
+}
 
-        free(arr->values);
-        arr->values = values;
-    }
+void dynarr_puti(struct Dynarr *arr, int v)
+{
+    dynarr_put(arr, int, v);
+}
 
-    arr->values[arr->size++] = value;
+int dynarr_geti(struct Dynarr *arr, size_t i)
+{
+    int v;
+    dynarr_get(arr, int, i, v);
+    return v;
 }
 
 int main(void)
 {
-    struct Dyn_Arr *arr = make_dyn_arr();
-    dyn_arr_debug(arr);
+    struct Dynarr *parr = NULL;
+    make_dynarr(parr, struct Point);
 
-    dyn_arr_put(arr, 0);
-    dyn_arr_put(arr, 1);
-    dyn_arr_put(arr, 2);
-    dyn_arr_put(arr, 3);
-    dyn_arr_put(arr, 4);
-    dyn_arr_put(arr, 5);
-    dyn_arr_put(arr, 6);
-    dyn_arr_put(arr, 7);
-    dyn_arr_put(arr, 8);
+    for (size_t i = 0; i < 31; ++i) {
+        struct Point p = {i, i};
+        dynarr_putpoint(parr, p);
+    }
 
-    dyn_arr_debug(arr);
+    printf("struct Point array\n");
+    printf("size: %lu\n", parr->size);
+    printf("capacity: %lu\n", parr->cap);
+    printf("values:\n");
+    for (size_t i = 0; i < dynarr_size(parr); ++i) {
+        struct Point val = dynarr_getpoint(parr, i);
+        printf("    %d", val.x);
+        printf(" %d\n", val.y);
+    }
 
-    free_dyn_arr(arr);
+    printf("\n");
+
+    struct Dynarr *sarr = NULL;
+    make_dynarr(sarr, char *);
+
+    dynarr_puts(sarr, "hello");
+    dynarr_puts(sarr, "world");
+    dynarr_puts(sarr, "how");
+    dynarr_puts(sarr, "are");
+    dynarr_puts(sarr, "you");
+    dynarr_puts(sarr, "doing");
+
+    printf("string array\n");
+    printf("size: %lu\n", sarr->size);
+    printf("capacity: %lu\n", sarr->cap);
+    printf("values:\n");
+    for (size_t i = 0; i < dynarr_size(sarr); ++i) {
+        printf("    %s\n", dynarr_gets(sarr, i));
+    }
+
+    printf("\n");
+
+    printf("integer array\n");
+    struct Dynarr *iarr = NULL;
+    make_dynarr(iarr, int);
+
+    for (int i = 0; i < 15; ++i) {
+        dynarr_puti(iarr, i);
+    }
+
+    printf("size: %lu\n", iarr->size);
+    printf("capacity: %lu\n", iarr->cap);
+    printf("values:\n");
+    for (size_t i = 0; i < dynarr_size(iarr); ++i) {
+        printf("    %d\n", dynarr_geti(iarr, i));
+    }
+
+    free_dynarr(parr);
+    free_dynarr(sarr);
+    free_dynarr(iarr);
     return 0;
 }
