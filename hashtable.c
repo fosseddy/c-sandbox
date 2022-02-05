@@ -141,7 +141,6 @@ int main(void) {
 
     printf("key: hello,        value: %s\n", hashtable_get(ht, "hello"));
     printf("key: you,          value: %s\n", hashtable_get(ht, "you"));
-    printf("key: doing,        value: %s\n", hashtable_get(ht, "doing"));
     printf("key: do_not_exist, value: %s\n", hashtable_get(ht, "do_not_exist"));
 
     free_hashtable(ht);
