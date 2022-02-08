@@ -130,6 +130,7 @@ int main(void) {
     hashtable_put(ht, "you", "what");
     hashtable_put(ht, "are", "you");
     hashtable_put(ht, "doing", "today");
+    hashtable_put(ht, "0", "0");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
