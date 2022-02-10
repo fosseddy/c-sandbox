@@ -16,6 +16,18 @@ struct node *make_node(int value)
     return node;
 }
 
+void free_node(struct node *n)
+{
+    while (n->next != NULL) {
+        struct node *tmp = n;
+        n = n->next;
+
+        free(tmp);
+    }
+
+    free(n);
+}
+
 void node_put(struct node **n, int value)
 {
     struct node *new_node = make_node(value);
@@ -42,6 +54,8 @@ int main(void)
     for (struct node *n = head; n != NULL; n = n->next) {
         printf("%d\n", n->value);
     }
+
+    free_node(head);
 
     return 0;
 }
