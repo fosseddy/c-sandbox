@@ -137,6 +137,7 @@ int main(void) {
     hashtable_put(ht, "4", "4");
     hashtable_put(ht, "5", "5");
     hashtable_put(ht, "6", "6");
+    hashtable_put(ht, "7", "7");
     hashtable_debug(ht);
     printf("-------------------------------------\n");
 
