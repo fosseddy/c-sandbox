@@ -3,58 +3,130 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
+
+pid_t Fork(void)
+{
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork failed");
+        exit(1);
+    }
+    return pid;
+}
+
+int Open(const char *pathname, int flags, mode_t mode)
+{
+    int fd = open(pathname, flags, mode);
+    if (fd < 0) {
+        perror("open failed");
+        exit(1);
+    }
+    return fd;
+}
+
+void Close(int fd)
+{
+    if (close(fd) < 0) {
+        perror("close failed");
+        exit(1);
+    }
+}
+
+ssize_t Write(int fd, const void *buf, size_t count)
+{
+    ssize_t b = write(fd, buf, count);
+    if ((int) b == -1) {
+        perror("write failed");
+        exit(1);
+    }
+    return b;
+}
+
+
+ssize_t Read(int fd, void *buf, size_t count)
+{
+    ssize_t r = read(fd, buf, count);
+    if ((int) r == -1) {
+        perror("read failed");
+        exit(1);
+    }
+    return r;
+}
+
+void Execve(const char *pathname, char *const argv[], char *const envp[])
+{
+    if (execve(pathname, argv, envp) < 0) {
+        perror("execve failed");
+        exit(1);
+    }
+}
+
+pid_t Wait(int *wstatus)
+{
+    pid_t p = wait(wstatus);
+    if (p < 0) {
+        perror("wait failed");
+        exit(1);
+    }
+    return p;
+}
+
+pid_t Waitpid(pid_t pid, int *wstatus, int options)
+{
+    pid_t p = waitpid(pid, wstatus, options);
+    if (p < 0) {
+        perror("waitpid failed");
+        exit(1);
+    }
+    return p;
+}
+
+void Pipe(int pipefd[2])
+{
+    if (pipe(pipefd) < 0) {
+        perror("pipe failed");
+        exit(1);
+    }
+}
 
 void change_var(void)
 {
     int x = 100;
 
-    pid_t child_pid = fork();
-
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
+    pid_t pid = Fork();
+    if (pid == 0) {
         x += 13;
     } else {
         x += 8;
     }
 
-    printf("pid: %i, x: %i\n", child_pid, x);
+    printf("pid: %i, x: %i\n", pid, x);
 }
 
 void opens_file(void)
 {
-    int fd = open("temp", O_RDWR | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+    int fd = Open("temp", O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
+    pid_t pid = Fork();
 
-    pid_t child_pid = fork();
-
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
+    if (pid == 0) {
         printf("child fd: %i\n", fd);
         char *buf = "This is\n";
-        write(fd, buf, strlen(buf));
+        Write(fd, buf, strlen(buf));
     } else {
         printf("parent fd: %i\n", fd);
         char *buf = "test message\n";
-        write(fd, buf, strlen(buf));
+        Write(fd, buf, strlen(buf));
     }
 
-    close(fd);
+    Close(fd);
 }
 
 void greet_farewell(void)
 {
-    pid_t child_pid = fork();
+    pid_t pid = Fork();
 
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
+    if (pid == 0) {
         printf("hello\n");
     } else {
         sleep(1);
@@ -64,96 +136,78 @@ void greet_farewell(void)
 
 void exec_ls(void)
 {
-    pid_t child_pid = fork();
+    pid_t pid = Fork();
 
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
-        //execl("/bin/ls", "/bin/ls", "-s", NULL);
-        //char *const env[] = {"BLOCKSIZE=69", NULL};
-        //execle("/bin/ls", "/bin/ls", "-s", NULL, env);
-        execlp("ls", "ls", "-l", NULL);
+    if (pid == 0) {
+        char *argv[] = {"/bin/ls", "-la", NULL};
+        Execve(argv[0], argv, NULL);
     } else {
-        sleep(1);
-        printf("lol\n");
+        Wait(NULL);
     }
 }
 
 void use_wait(void)
 {
-    pid_t child_pid = fork();
+    pid_t pid = Fork();
 
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
+    if (pid == 0) {
+        Wait(NULL);
         printf("hello\n");
     } else {
-        wait(NULL);
+        Wait(NULL);
         printf("goodbye\n");
     }
 }
 
 void use_waitpid(void)
 {
-    pid_t child_pid = fork();
+    pid_t pid = Fork();
 
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
+    if (pid == 0) {
         printf("hello\n");
     } else {
-        waitpid(child_pid, NULL, 0);
+        Waitpid(pid, NULL, 0);
         printf("goodbye\n");
     }
 }
 
 void close_stdout(void)
 {
-    pid_t child_pid = fork();
+    pid_t pid = Fork();
 
-    if (child_pid < 0) {
-        fprintf(stderr, "could not create child process\n");
-        exit(1);
-    } else if (child_pid == 0) {
-        close(STDOUT_FILENO);
+    if (pid == 0) {
+        Close(STDOUT_FILENO);
         printf("hello\n");
     } else {
-        wait(NULL);
+        Wait(NULL);
         printf("goodbye\n");
     }
 }
 
 void pipe_two_children(void)
 {
-    int pipefd[2];
-    pipe(pipefd);
+    int pfd[2];
+    Pipe(pfd);
 
-    pid_t first = fork();
-    if (first == 0) {
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        write(STDOUT_FILENO, "hello from first\n", 18);
-    } else {
-        pid_t second = fork();
-        if (second == 0) {
-            write(STDOUT_FILENO, "hello from second\n", 18);
-            close(pipefd[1]);
-            dup2(pipefd[0], STDIN_FILENO);
-            close(pipefd[0]);
-            char ch[1];
-            while (read(STDIN_FILENO, &ch, 1) > 0) {
-                write(STDOUT_FILENO, ch, 1);
-            }
-        } else {
-            close(pipefd[0]);
-            close(pipefd[1]);
-            waitpid(second, NULL, 0);
-            printf("goodbye from parent\n");
+    pid_t pid1 = Fork();
+    if (pid1 == 0) {
+        printf("this is child 1 (%d)\n", (int) getpid());
+        Close(pfd[0]);
+        char buf[30] = {0};
+        sprintf(buf, "hello from %d", (int) getpid());
+        Write(pfd[1], buf, strlen(buf));
+        exit(0);
+    }
+
+    pid_t pid2 = Fork();
+    if (pid2 == 0) {
+        printf("this is child 2 (%d)\n", (int) getpid());
+        Close(pfd[1]);
+        char c;
+        while (Read(pfd[0], &c, 1)) {
+            fputc(c, stdout);
         }
+        exit(0);
     }
 }
 
