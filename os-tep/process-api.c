@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 pid_t Fork(void)
 {
@@ -65,7 +66,7 @@ void Execve(const char *pathname, char *const argv[], char *const envp[])
 pid_t Wait(int *wstatus)
 {
     pid_t p = wait(wstatus);
-    if (p < 0) {
+    if (p < 0 && errno != ECHILD) {
         perror("wait failed");
         exit(1);
     }
@@ -194,7 +195,7 @@ void pipe_two_children(void)
         printf("this is child 1 (%d)\n", (int) getpid());
         Close(pfd[0]);
         char buf[30] = {0};
-        sprintf(buf, "hello from %d", (int) getpid());
+        sprintf(buf, "hello from %d\n", (int) getpid());
         Write(pfd[1], buf, strlen(buf));
         exit(0);
     }
@@ -209,6 +210,10 @@ void pipe_two_children(void)
         }
         exit(0);
     }
+
+    Close(pfd[0]);
+    Close(pfd[1]);
+    while (Wait(NULL) > 0);
 }
 
 int main(void)
