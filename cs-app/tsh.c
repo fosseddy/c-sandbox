@@ -33,21 +33,16 @@ struct input {
 
 enum cmd_kind {
     CMD_NOT_BUILTIN = 0,
-    CMD_QUIT,
+    CMD_EXIT,
     CMD_JOBS,
     CMD_BG,
     CMD_FG
 };
 
-struct arg {
-    char *start;
-    size_t len;
-};
-
 struct argv {
     size_t size;
     size_t cap;
-    struct arg *buf;
+    char **buf;
 };
 
 struct cmd {
@@ -66,53 +61,57 @@ void read_input(struct input *inp)
     char ch;
 
     inp->size = 0;
-    while (fread(&ch, 1, 1, stdin) > 0 && ch != '\n') {
-        if (ferror(stdin) != 0) {
-            fprintf(stderr, "failed to read from stdin\n");
-            exit(1);
-        }
-        put_char(inp, ch);
+    while (fread(&ch, 1, 1, stdin) > 0 && ch != '\n') put_char(inp, ch);
+
+    if (ferror(stdin)) {
+        fprintf(stderr, "failed to read from stdin\n");
+        exit(1);
     }
 }
 
-void put_arg(struct cmd *cmd, char *start, size_t len)
+void put_arg(struct argv *argv, char *start, size_t len)
 {
-    MEM_GROW(&cmd->argv, struct arg);
-    cmd->argv.buf[cmd->argv.size++] = (struct arg) {
-        .start = start,
-        .len = len
-    };
+    char *arg;
+
+    if ((arg = calloc(len + 1, 1)) == NULL) {
+        perror("malloc failed");
+        exit(1);
+    }
+
+    strncpy(arg, start, len);
+
+    MEM_GROW(argv, char *);
+    argv->buf[argv->size++] = arg;
 }
 
 void parse_input(struct input *inp, struct cmd *cmd)
 {
-    char *start;
+    char *start, ch;
     size_t len, i;
-    struct arg *a;
 
+    for (i = 0; i < cmd->argv.size; ++i) free(cmd->argv.buf[i]);
     cmd->argv.size = 0;
+
     for (i = 0; i < inp->size; ++i) {
         start = inp->buf + i;
-        while (inp->buf[i] != ' ' && i < inp->size) i++;
+        while (i < inp->size && inp->buf[i] != ' ') i++;
         len = inp->buf + i - start;
-        put_arg(cmd, start, len);
+        if (len == 0) continue;
+        put_arg(&cmd->argv, start, len);
     }
 
+    if (cmd->argv.size == 0) return;
+
     cmd->kind = CMD_NOT_BUILTIN;
-    a = cmd->argv.buf;
-    switch (a->len) {
-    case 4:
-        if (memcmp(a->start, "quit", 4) == 0) {
-            cmd->kind = CMD_QUIT;
-        } else if (memcmp(a->start, "jobs", 4) == 0) {
-            cmd->kind = CMD_JOBS;
-        }
-    case 2:
-        if (memcmp(a->start, "bg", 2) == 0) {
-            cmd->kind = CMD_BG;
-        } else if (memcmp(a->start, "fg", 2) == 0) {
-            cmd->kind = CMD_FG;
-        }
+
+    if (strcmp(cmd->argv.buf[0], "exit") == 0) {
+        cmd->kind = CMD_EXIT;
+    } else if (strcmp(cmd->argv.buf[0], "jobs") == 0) {
+        cmd->kind = CMD_JOBS;
+    } else if (strcmp(cmd->argv.buf[0], "bg") == 0) {
+        cmd->kind = CMD_BG;
+    } else if (strcmp(cmd->argv.buf[0], "fg") == 0) {
+        cmd->kind = CMD_FG;
     }
 }
 
@@ -121,19 +120,19 @@ int main(void)
     struct input input;
     struct cmd cmd;
 
-    MEM_ALLOC(&input, 5, char);          // @Leak(art): let OS free it
-    MEM_ALLOC(&cmd.argv, 2, struct arg); // @Leak(art): let OS free it
+    MEM_ALLOC(&input, 50, char);     // @Leak(art): let OS free it
+    MEM_ALLOC(&cmd.argv, 5, char *); // @Leak(art): let OS free it
 
     for (;;) {
         printf("tsh> ");
 
         read_input(&input);
-        if (input.size == 0) continue; // @Todo(art): trim input
-
         parse_input(&input, &cmd);
 
+        if (cmd.argv.size == 0) continue;
+
         switch (cmd.kind) {
-        case CMD_QUIT: exit(0);
+        case CMD_EXIT: exit(0);
         case CMD_JOBS:
             printf("handling `jobs` command...\n");
             continue;
@@ -144,8 +143,7 @@ int main(void)
             printf("handling `fg` command...\n");
             continue;
         default:
-            printf("handling not build in `%.*s` command...\n",
-                   cmd.argv.buf->len, cmd.argv.buf->start);
+            printf("handling not built in `%s` command...\n", cmd.argv.buf[0]);
         }
     }
 
