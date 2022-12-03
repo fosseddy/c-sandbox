@@ -432,7 +432,7 @@ int main(void)
     // @Leak(art): let OS free it
     MEM_ALLOC(&input, 50, char);
     MEM_ALLOC(&cmd.argv, 5, char *);
-    MEM_ALLOC(&joblist, 30, struct job_t);
+    MEM_ALLOC(&joblist, 10, struct job_t);
 
     for (;;) {
         printf("tsh> ");
