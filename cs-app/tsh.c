@@ -244,6 +244,32 @@ struct job_t *exec_cmd(struct cmd_t *cmd)
     return job;
 }
 
+struct job_t *getjob_bypid(pid_t pid)
+{
+    size_t i;
+
+    for (i = 0; i < joblist.size; ++i) {
+        if (joblist.buf[i].pid == pid) {
+            return joblist.buf + i;
+        }
+    }
+
+    return NULL;
+}
+
+struct job_t *getjob_fg()
+{
+    size_t i;
+
+    for (i = 0; i < joblist.size; ++i) {
+        if (joblist.buf[i].status == JSTAT_FG) {
+            return joblist.buf + i;
+        }
+    }
+
+    return NULL;
+}
+
 void set_sighandler(int sig, void (*handler)(int))
 {
     struct sigaction act;
@@ -259,26 +285,39 @@ void set_sighandler(int sig, void (*handler)(int))
 
 void sigtstp_handler(int sig)
 {
-    char *msg, *err;
+}
+
+void sigint_handler(int sig)
+{
+    char *msg;
+    struct job_t *job;
+
+    job = getjob_fg();
+    if (job) {
+        if (kill(-job->pid, sig) < 0) {
+            msg = "failed to send sigint to child\n";
+            write(STDOUT_FILENO, msg, strlen(msg));
+            _exit(1);
+        }
+        msg = "\n";
+        write(STDOUT_FILENO, msg, strlen(msg));
+    } else {
+        msg = "\ntsh> ";
+        write(STDOUT_FILENO, msg, strlen(msg));
+    }
 }
 
 void sigchld_handler(int sig)
 {
     pid_t pid;
     int status;
-    size_t i;
     struct job_t *job;
 
     while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED)) > 0) {
-        job = NULL;
-        for (i = 0; i < joblist.size; ++i) {
-            if (joblist.buf[i].pid == pid) {
-                job = joblist.buf + i;
-            }
-        }
+        job = getjob_bypid(pid);
         assert(job != NULL);
 
-        if (WIFEXITED(status)) {
+        if (WIFEXITED(status) || WIFSIGNALED(status)) {
             job->status = JSTAT_UNDEF;
             continue;
         }
@@ -292,6 +331,7 @@ int main(void)
     struct job_t *fg_job;
 
     set_sighandler(SIGCHLD, sigchld_handler);
+    set_sighandler(SIGINT, sigint_handler);
     set_sighandler(SIGTSTP, sigtstp_handler);
 
     // @Leak(art): let OS free it
