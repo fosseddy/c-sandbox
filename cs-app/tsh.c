@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <string.h>
 
 #define MEM_ALLOC(mem, capacity, type)              \
@@ -48,6 +50,7 @@ struct argv {
 struct cmd {
     enum cmd_kind kind;
     struct argv argv;
+    int bg;
 };
 
 void put_char(struct input *inp, char ch)
@@ -73,14 +76,19 @@ void put_arg(struct argv *argv, char *start, size_t len)
 {
     char *arg;
 
+    MEM_GROW(argv, char *);
+
+    if (start == NULL) {
+        argv->buf[argv->size++] = NULL;
+        return;
+    }
+
     if ((arg = calloc(len + 1, 1)) == NULL) {
         perror("malloc failed");
         exit(1);
     }
 
     strncpy(arg, start, len);
-
-    MEM_GROW(argv, char *);
     argv->buf[argv->size++] = arg;
 }
 
@@ -90,6 +98,7 @@ void parse_input(struct input *inp, struct cmd *cmd)
     size_t len, i;
 
     for (i = 0; i < cmd->argv.size; ++i) free(cmd->argv.buf[i]);
+    cmd->bg = 0;
     cmd->argv.size = 0;
 
     for (i = 0; i < inp->size; ++i) {
@@ -97,11 +106,18 @@ void parse_input(struct input *inp, struct cmd *cmd)
         while (i < inp->size && inp->buf[i] != ' ') i++;
         len = inp->buf + i - start;
         if (len == 0) continue;
+
+        if (len == 1 && *start == '&') {
+            cmd->bg = 1;
+            break;
+        }
+
         put_arg(&cmd->argv, start, len);
     }
 
     if (cmd->argv.size == 0) return;
 
+    put_arg(&cmd->argv, NULL, 0);
     cmd->kind = CMD_NOT_BUILTIN;
 
     if (strcmp(cmd->argv.buf[0], "exit") == 0) {
@@ -113,6 +129,31 @@ void parse_input(struct input *inp, struct cmd *cmd)
     } else if (strcmp(cmd->argv.buf[0], "fg") == 0) {
         cmd->kind = CMD_FG;
     }
+}
+
+void exec_cmd(struct cmd *cmd)
+{
+    pid_t pid;
+
+    if ((pid = fork()) < 0) {
+        perror("fork failed");
+        exit(1);
+    }
+
+    if (pid == 0) {
+        if (access(cmd->argv.buf[0], F_OK) < 0) {
+            fprintf(stderr, "command `%s` does not exist\n", cmd->argv.buf[0]);
+            exit(1);
+        }
+
+        if (execve(cmd->argv.buf[0], cmd->argv.buf, NULL) < 0) {
+            perror("could not execute command");
+            exit(1);
+        }
+    }
+
+    // parent
+    // @Todo(art): add job to joblist
 }
 
 int main(void)
@@ -143,7 +184,8 @@ int main(void)
             printf("handling `fg` command...\n");
             continue;
         default:
-            printf("handling not built in `%s` command...\n", cmd.argv.buf[0]);
+            exec_cmd(&cmd);
+            wait(NULL);
         }
     }
 
