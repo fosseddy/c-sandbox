@@ -247,9 +247,9 @@ void unblocksignals(sigset_t *old)
 void showjobs()
 {
     size_t i;
-    sigset_t *oldset;
+    sigset_t oldset;
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
     for (i = 0; i < joblist.size; ++i) {
         struct job_t j = joblist.buf[i];
 
@@ -265,7 +265,7 @@ void showjobs()
 
         printf("%s\n", j.name);
     }
-    unblocksignals(oldset);
+    unblocksignals(&oldset);
 }
 
 void waitfg(struct job_t *job)
@@ -279,15 +279,15 @@ void waitfg(struct job_t *job)
 void exec_cmd(struct cmd_t *cmd)
 {
     struct job_t *job;
-    sigset_t *oldset;
+    sigset_t oldset;
     pid_t pid;
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
 
     if ((pid = fork()) < 0) unix_error("fork failed");
 
     if (pid == 0) {
-        unblocksignals(oldset);
+        unblocksignals(&oldset);
 
         if (setpgid(0, 0) < 0) unix_error("setpgid failed");
 
@@ -302,7 +302,7 @@ void exec_cmd(struct cmd_t *cmd)
     }
 
     job = put_job(pid, cmd->argv.buf[0], cmd->bg);
-    unblocksignals(oldset);
+    unblocksignals(&oldset);
 
     if (!cmd->bg) {
         waitfg(job);
@@ -312,7 +312,7 @@ void exec_cmd(struct cmd_t *cmd)
 void do_bgfg(struct cmd_t *cmd)
 {
     struct job_t *job;
-    sigset_t *oldset;
+    sigset_t oldset;
     char *jid;
 
     if (cmd->argv.size - 1 != 2) {
@@ -320,7 +320,7 @@ void do_bgfg(struct cmd_t *cmd)
         return;
     }
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
     if (*cmd->argv.buf[1] == '%') {
         jid = cmd->argv.buf[1] + 1;
         job = getjob_byid(atoi(jid));
@@ -335,10 +335,10 @@ void do_bgfg(struct cmd_t *cmd)
 
     if (cmd->kind == CMD_BG) {
         job->status = JSTAT_BG;
-        unblocksignals(oldset);
+        unblocksignals(&oldset);
     } else {
         job->status = JSTAT_FG;
-        unblocksignals(oldset);
+        unblocksignals(&oldset);
         waitfg(job);
     }
 }
@@ -360,9 +360,9 @@ void sigtstp_handler(int sig)
 {
     char *msg;
     struct job_t *job;
-    sigset_t *oldset;
+    sigset_t oldset;
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
     job = getjob_fg();
     assert(job != NULL);
 
@@ -373,7 +373,7 @@ void sigtstp_handler(int sig)
     }
 
     job->status = JSTAT_ST;
-    unblocksignals(oldset);
+    unblocksignals(&oldset);
     msg = "\n";
     write(STDOUT_FILENO, msg, strlen(msg));
 }
@@ -382,9 +382,9 @@ void sigint_handler(int sig)
 {
     char *msg;
     struct job_t *job;
-    sigset_t *oldset;
+    sigset_t oldset;
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
     job = getjob_fg();
     if (job) {
         if (kill(-job->pid, sig) < 0) {
@@ -398,7 +398,7 @@ void sigint_handler(int sig)
         msg = "\ntsh> ";
         write(STDOUT_FILENO, msg, strlen(msg));
     }
-    unblocksignals(oldset);
+    unblocksignals(&oldset);
 }
 
 void sigchld_handler(int sig)
@@ -406,9 +406,9 @@ void sigchld_handler(int sig)
     pid_t pid;
     int status;
     struct job_t *job;
-    sigset_t *oldset;
+    sigset_t oldset;
 
-    blocksignals(oldset);
+    blocksignals(&oldset);
     while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED)) > 0) {
         job = getjob_bypid(pid);
         assert(job != NULL);
@@ -417,7 +417,7 @@ void sigchld_handler(int sig)
             job->status = JSTAT_UNDEF;
         }
     }
-    unblocksignals(oldset);
+    unblocksignals(&oldset);
 }
 
 int main(void)
