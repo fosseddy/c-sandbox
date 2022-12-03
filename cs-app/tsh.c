@@ -448,10 +448,8 @@ int main(void)
         case CMD_JOBS:
             showjobs();
             break;
-        case CMD_BG:
-            do_bgfg(&cmd);
-            break;
         case CMD_FG:
+        case CMD_BG:
             do_bgfg(&cmd);
             break;
         default:
