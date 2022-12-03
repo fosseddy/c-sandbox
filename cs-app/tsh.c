@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #define MEM_ALLOC(mem, capacity, type)              \
 do {                                                \
@@ -191,65 +192,25 @@ struct job_t *put_job(pid_t pid, char *name, int isbg)
     return joblist.buf + joblist.size - 1;
 }
 
-void showjobs()
-{
-    size_t i;
-
-    for (i = 0; i < joblist.size; ++i) {
-        struct job_t j = joblist.buf[i];
-
-        if (j.status == JSTAT_UNDEF) continue;
-
-        printf("[%d] (%d) ", j.id, j.pid);
-
-        switch (j.status) {
-        case JSTAT_FG: printf("Foreground "); break;
-        case JSTAT_BG: printf("Running "); break;
-        case JSTAT_ST: printf("Stopped "); break;
-        }
-
-        printf("%s\n", j.name);
-    }
-}
-
-struct job_t *exec_cmd(struct cmd_t *cmd)
-{
-    struct job_t *job;
-    sigset_t set, oldset;
-    pid_t pid;
-
-    sigaddset(&set, SIGCHLD);
-    sigprocmask(SIG_BLOCK, &set, &oldset);
-
-    if ((pid = fork()) < 0) unix_error("fork failed");
-
-    if (pid == 0) {
-        sigprocmask(SIG_SETMASK, &oldset, NULL);
-
-        if (setpgid(0, 0) < 0) unix_error("setpgid failed");
-
-        if (access(cmd->argv.buf[0], F_OK) < 0) {
-            fprintf(stderr, "command `%s` does not exist\n", cmd->argv.buf[0]);
-            exit(1);
-        }
-
-        if (execve(cmd->argv.buf[0], cmd->argv.buf, environ) < 0) {
-            unix_error("could not execute command");
-        }
-    }
-
-    job = put_job(pid, cmd->argv.buf[0], cmd->bg);
-    sigprocmask(SIG_SETMASK, &oldset, NULL);
-
-    return job;
-}
-
 struct job_t *getjob_bypid(pid_t pid)
 {
     size_t i;
 
     for (i = 0; i < joblist.size; ++i) {
         if (joblist.buf[i].pid == pid) {
+            return joblist.buf + i;
+        }
+    }
+
+    return NULL;
+}
+
+struct job_t *getjob_byid(int id)
+{
+    size_t i;
+
+    for (i = 0; i < joblist.size; ++i) {
+        if (joblist.buf[i].id == id) {
             return joblist.buf + i;
         }
     }
@@ -270,6 +231,118 @@ struct job_t *getjob_fg()
     return NULL;
 }
 
+void blocksignals(sigset_t *old)
+{
+    sigset_t set;
+
+    sigfillset(&set);
+    sigprocmask(SIG_BLOCK, &set, old);
+}
+
+void unblocksignals(sigset_t *old)
+{
+    sigprocmask(SIG_SETMASK, old, NULL);
+}
+
+void showjobs()
+{
+    size_t i;
+    sigset_t *oldset;
+
+    blocksignals(oldset);
+    for (i = 0; i < joblist.size; ++i) {
+        struct job_t j = joblist.buf[i];
+
+        if (j.status == JSTAT_UNDEF) continue;
+
+        printf("[%d] (%d) ", j.id, j.pid);
+
+        switch (j.status) {
+        case JSTAT_FG: printf("Foreground "); break;
+        case JSTAT_BG: printf("Running "); break;
+        case JSTAT_ST: printf("Stopped "); break;
+        }
+
+        printf("%s\n", j.name);
+    }
+    unblocksignals(oldset);
+}
+
+void waitfg(struct job_t *job)
+{
+    for (;;) {
+        pause();
+        if (job->status != JSTAT_FG) break;
+    }
+}
+
+void exec_cmd(struct cmd_t *cmd)
+{
+    struct job_t *job;
+    sigset_t *oldset;
+    pid_t pid;
+
+    blocksignals(oldset);
+
+    if ((pid = fork()) < 0) unix_error("fork failed");
+
+    if (pid == 0) {
+        unblocksignals(oldset);
+
+        if (setpgid(0, 0) < 0) unix_error("setpgid failed");
+
+        if (access(cmd->argv.buf[0], F_OK) < 0) {
+            fprintf(stderr, "command `%s` does not exist\n", cmd->argv.buf[0]);
+            exit(1);
+        }
+
+        if (execve(cmd->argv.buf[0], cmd->argv.buf, environ) < 0) {
+            unix_error("could not execute command");
+        }
+    }
+
+    job = put_job(pid, cmd->argv.buf[0], cmd->bg);
+    unblocksignals(oldset);
+
+    if (!cmd->bg) {
+        waitfg(job);
+    }
+}
+
+void do_bgfg(struct cmd_t *cmd)
+{
+    struct job_t *job;
+    sigset_t *oldset;
+    char *jid;
+
+    if (cmd->argv.size - 1 != 2) {
+        fprintf(stderr, "expected job id or proccess id\n");
+        return;
+    }
+
+    blocksignals(oldset);
+    if (*cmd->argv.buf[1] == '%') {
+        jid = cmd->argv.buf[1] + 1;
+        job = getjob_byid(atoi(jid));
+    } else {
+        job = getjob_bypid(atoi(cmd->argv.buf[1]));
+    }
+
+    if (kill(-job->pid, SIGCONT) < 0) {
+        if (errno == ESRCH) return;
+        unix_error("failed to send sigcont to child\n");
+    }
+
+    if (cmd->kind == CMD_BG) {
+        job->status = JSTAT_BG;
+        unblocksignals(oldset);
+    } else {
+        job->status = JSTAT_FG;
+        unblocksignals(oldset);
+        waitfg(job);
+    }
+}
+
 void set_sighandler(int sig, void (*handler)(int))
 {
     struct sigaction act;
@@ -285,13 +358,33 @@ void set_sighandler(int sig, void (*handler)(int))
 
 void sigtstp_handler(int sig)
 {
+    char *msg;
+    struct job_t *job;
+    sigset_t *oldset;
+
+    blocksignals(oldset);
+    job = getjob_fg();
+    assert(job != NULL);
+
+    if (kill(-job->pid, sig) < 0) {
+        msg = "failed to send sigtstp to child\n";
+        write(STDOUT_FILENO, msg, strlen(msg));
+        _exit(1);
+    }
+
+    job->status = JSTAT_ST;
+    unblocksignals(oldset);
+    msg = "\n";
+    write(STDOUT_FILENO, msg, strlen(msg));
 }
 
 void sigint_handler(int sig)
 {
     char *msg;
     struct job_t *job;
+    sigset_t *oldset;
 
+    blocksignals(oldset);
     job = getjob_fg();
     if (job) {
         if (kill(-job->pid, sig) < 0) {
@@ -305,6 +398,7 @@ void sigint_handler(int sig)
         msg = "\ntsh> ";
         write(STDOUT_FILENO, msg, strlen(msg));
     }
+    unblocksignals(oldset);
 }
 
 void sigchld_handler(int sig)
@@ -312,23 +406,24 @@ void sigchld_handler(int sig)
     pid_t pid;
     int status;
     struct job_t *job;
+    sigset_t *oldset;
 
+    blocksignals(oldset);
     while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED)) > 0) {
         job = getjob_bypid(pid);
         assert(job != NULL);
 
         if (WIFEXITED(status) || WIFSIGNALED(status)) {
             job->status = JSTAT_UNDEF;
-            continue;
         }
     }
+    unblocksignals(oldset);
 }
 
 int main(void)
 {
     struct input_t input;
     struct cmd_t cmd;
-    struct job_t *fg_job;
 
     set_sighandler(SIGCHLD, sigchld_handler);
     set_sighandler(SIGINT, sigint_handler);
@@ -348,25 +443,19 @@ int main(void)
         if (cmd.argv.size == 0) continue;
 
         switch (cmd.kind) {
-        case CMD_EXIT: exit(0);
+        case CMD_EXIT:
+            exit(0);
         case CMD_JOBS:
             showjobs();
-            continue;
+            break;
         case CMD_BG:
-            printf("handling `bg` command...\n");
-            continue;
+            do_bgfg(&cmd);
+            break;
         case CMD_FG:
-            printf("handling `fg` command...\n");
-            continue;
+            do_bgfg(&cmd);
+            break;
         default:
-            fg_job = exec_cmd(&cmd);
-            for (;;) {
-                pause();
-                if (fg_job->status != JSTAT_FG) {
-                    fg_job = NULL;
-                    break;
-                }
-            }
+            exec_cmd(&cmd);
         }
     }
 
