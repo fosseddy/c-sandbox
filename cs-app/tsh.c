@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <string.h>
+#include <assert.h>
 
 #define MEM_ALLOC(mem, capacity, type)              \
 do {                                                \
@@ -55,7 +56,8 @@ struct cmd_t {
 };
 
 enum jobstatus_t {
-    JSTAT_FG = 0,
+    JSTAT_UNDEF = 0,
+    JSTAT_FG,
     JSTAT_BG,
     JSTAT_ST
 };
@@ -161,9 +163,10 @@ void parse_input(struct input_t *input, struct cmd_t *cmd)
     }
 }
 
-void put_job(pid_t pid, char *name, int isbg)
+struct job_t *put_job(pid_t pid, char *name, int isbg)
 {
     struct job_t job;
+    size_t i;
 
     job.id = job_id++;
     job.pid = pid;
@@ -175,8 +178,17 @@ void put_job(pid_t pid, char *name, int isbg)
     }
     strcpy(job.name, name);
 
+    for (i = 0; i < joblist.size; ++i) {
+        if (joblist.buf[i].status == JSTAT_UNDEF) {
+            free(joblist.buf[i].name);
+            joblist.buf[i] = job;
+            return joblist.buf + i;
+        }
+    }
+
     MEM_GROW(&joblist, struct job_t);
     joblist.buf[joblist.size++] = job;
+    return joblist.buf + joblist.size - 1;
 }
 
 void showjobs()
@@ -185,6 +197,8 @@ void showjobs()
 
     for (i = 0; i < joblist.size; ++i) {
         struct job_t j = joblist.buf[i];
+
+        if (j.status == JSTAT_UNDEF) continue;
 
         printf("[%d] (%d) ", j.id, j.pid);
 
@@ -198,12 +212,13 @@ void showjobs()
     }
 }
 
-void exec_cmd(struct cmd_t *cmd)
+struct job_t *exec_cmd(struct cmd_t *cmd)
 {
+    struct job_t *job;
     sigset_t set, oldset;
     pid_t pid;
 
-    sigaddset(&set, SIGTSTP);
+    sigaddset(&set, SIGCHLD);
     sigprocmask(SIG_BLOCK, &set, &oldset);
 
     if ((pid = fork()) < 0) unix_error("fork failed");
@@ -223,8 +238,23 @@ void exec_cmd(struct cmd_t *cmd)
         }
     }
 
-    put_job(pid, cmd->argv.buf[0], cmd->bg);
+    job = put_job(pid, cmd->argv.buf[0], cmd->bg);
     sigprocmask(SIG_SETMASK, &oldset, NULL);
+
+    return job;
+}
+
+void set_sighandler(int sig, void (*handler)(int))
+{
+    struct sigaction act;
+
+    act.sa_handler = handler;
+    act.sa_flags = SA_RESTART;
+    sigemptyset(&act.sa_mask);
+
+    if (sigaction(sig, &act, NULL) < 0) {
+        unix_error("signal setting failed");
+    }
 }
 
 void sigtstp_handler(int sig)
@@ -232,24 +262,42 @@ void sigtstp_handler(int sig)
     char *msg, *err;
 }
 
+void sigchld_handler(int sig)
+{
+    pid_t pid;
+    int status;
+    size_t i;
+    struct job_t *job;
+
+    while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED)) > 0) {
+        job = NULL;
+        for (i = 0; i < joblist.size; ++i) {
+            if (joblist.buf[i].pid == pid) {
+                job = joblist.buf + i;
+            }
+        }
+        assert(job != NULL);
+
+        if (WIFEXITED(status)) {
+            job->status = JSTAT_UNDEF;
+            continue;
+        }
+    }
+}
+
 int main(void)
 {
-    struct sigaction sigtstp_act;
     struct input_t input;
     struct cmd_t cmd;
+    struct job_t *fg_job;
 
-    sigtstp_act.sa_handler = sigtstp_handler;
-    sigtstp_act.sa_flags = SA_RESTART;
-    sigemptyset(&sigtstp_act.sa_mask);
+    set_sighandler(SIGCHLD, sigchld_handler);
+    set_sighandler(SIGTSTP, sigtstp_handler);
 
-    if (sigaction(SIGTSTP, &sigtstp_act, NULL) < 0) {
-        perror("signal setting failed");
-        exit(1);
-    }
-
-    MEM_ALLOC(&input, 50, char);           // @Leak(art): let OS free it
-    MEM_ALLOC(&cmd.argv, 5, char *);       // @Leak(art): let OS free it
-    MEM_ALLOC(&joblist, 30, struct job_t); // @Leak(art): let OS free it
+    // @Leak(art): let OS free it
+    MEM_ALLOC(&input, 50, char);
+    MEM_ALLOC(&cmd.argv, 5, char *);
+    MEM_ALLOC(&joblist, 30, struct job_t);
 
     for (;;) {
         printf("tsh> ");
@@ -271,8 +319,14 @@ int main(void)
             printf("handling `fg` command...\n");
             continue;
         default:
-            exec_cmd(&cmd);
-            wait(NULL);
+            fg_job = exec_cmd(&cmd);
+            for (;;) {
+                pause();
+                if (fg_job->status != JSTAT_FG) {
+                    fg_job = NULL;
+                    break;
+                }
+            }
         }
     }
 
