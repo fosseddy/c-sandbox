@@ -167,32 +167,37 @@ void parse_input(struct input_t *input, struct cmd_t *cmd)
 
 struct job_t *put_job(pid_t pid, char *name, int isbg)
 {
-    struct job_t job;
+    struct job_t *job;
     size_t i;
 
-    job.id = job_id++;
-    job.pid = pid;
-    job.status = JSTAT_FG;
-    if (isbg) job.status = JSTAT_BG;
-
-    if ((job.name = malloc(strlen(name) + 1)) == NULL) {
-        unix_error("malloc failed");
-    }
-    strcpy(job.name, name);
-
+    job = NULL;
     for (i = 0; i < joblist.size; ++i) {
         if (joblist.buf[i].status == JSTAT_UNDEF) {
             free(joblist.buf[i].name);
-            memcpy(joblist.buf + i, &job, sizeof(struct job_t));
-            return joblist.buf + i;
+            job = joblist.buf + i;
+            break;
         }
     }
 
-    MEM_GROW(&joblist, struct job_t);
-    memcpy(joblist.buf + joblist.size, &job, sizeof(struct job_t));
-    joblist.size++;
+    if (job == NULL) {
+        MEM_GROW(&joblist, struct job_t);
+        job = joblist.buf + joblist.size;
+        joblist.size++;
+    }
 
-    return joblist.buf + joblist.size - 1;
+    job->id = job_id++;
+    job->pid = pid;
+
+    job->status = JSTAT_FG;
+    if (isbg) job->status = JSTAT_BG;
+
+    if ((job->name = malloc(strlen(name) + 1)) == NULL) {
+        unix_error("malloc failed");
+    }
+    strcpy(job->name, name);
+
+    return job;
+
 }
 
 struct job_t *getjob_bypid(pid_t pid)
@@ -332,6 +337,11 @@ void do_bgfg(struct cmd_t *cmd)
         job = getjob_bypid(atoi(cmd->argv.buf[1]));
     }
 
+    if (job == NULL) {
+        unblocksignals();
+        return;
+    }
+
     if (kill(-job->pid, SIGCONT) < 0) {
         if (errno == ESRCH) return;
         unix_error("failed to send sigcont to child\n");
@@ -454,8 +464,8 @@ int main(void)
         case CMD_JOBS:
             showjobs();
             break;
-        case CMD_FG:
         case CMD_BG:
+        case CMD_FG:
             do_bgfg(&cmd);
             break;
         default:
