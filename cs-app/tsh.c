@@ -1,11 +1,12 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <signal.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 
 #define MEM_ALLOC(mem, capacity, type)              \
 do {                                                \
@@ -124,7 +125,7 @@ void put_arg(struct argv_t *argv, char *start, size_t len)
 
 void parse_input(struct input_t *input, struct cmd_t *cmd)
 {
-    char *start, ch;
+    char *start;
     size_t len, i;
 
     for (i = 0; i < cmd->argv.size; ++i) free(cmd->argv.buf[i]);
@@ -265,6 +266,7 @@ void showjobs()
         case JSTAT_FG: printf("Foreground "); break;
         case JSTAT_BG: printf("Running "); break;
         case JSTAT_ST: printf("Stopped "); break;
+        default: assert(0 && "unreachable");
         }
 
         printf("%s\n", j.name);
@@ -406,6 +408,8 @@ void sigint_handler(int sig)
 
 void sigchld_handler(int sig)
 {
+    (void) sig;
+
     pid_t pid;
     int status;
     struct job_t *job;
