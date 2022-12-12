@@ -167,10 +167,9 @@ void parse_input(struct input_t *input, struct cmd_t *cmd)
 
 struct job_t *put_job(pid_t pid, char *name, int isbg)
 {
-    struct job_t *job;
+    struct job_t *job = NULL;
     size_t i;
 
-    job = NULL;
     for (i = 0; i < joblist.size; ++i) {
         if (joblist.buf[i].status == JSTAT_UNDEF) {
             free(joblist.buf[i].name);
@@ -197,7 +196,6 @@ struct job_t *put_job(pid_t pid, char *name, int isbg)
     strcpy(job->name, name);
 
     return job;
-
 }
 
 struct job_t *getjob_bypid(pid_t pid)
