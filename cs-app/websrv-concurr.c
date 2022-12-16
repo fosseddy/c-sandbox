@@ -81,7 +81,7 @@ void serve_clients(struct pool_t *p)
                 printf("EOF on fd %d\n", connfd);
                 close(connfd);
                 FD_CLR(connfd, &p->read_set);
-                p->fd[i] = - 1;
+                p->fd[i] = -1;
             }
         }
     }
