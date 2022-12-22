@@ -6,7 +6,6 @@
 #include <netdb.h>
 
 #define MAXLINE 255
-#define CONN_EOF 0x4
 
 int main(void)
 {
@@ -63,7 +62,7 @@ int main(void)
             continue;
         }
 
-        while ((n = read(clifd, buf, MAXLINE)) != 0 && buf[0] != CONN_EOF) {
+        while ((n = read(clifd, buf, MAXLINE)) != 0) {
             write(clifd, buf, n);
         }
 
