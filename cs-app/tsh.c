@@ -8,28 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#define MEM_ALLOC(mem, capacity, type)              \
-do {                                                \
-    (mem)->size = 0;                                \
-    (mem)->cap = (capacity);                        \
-    (mem)->buf = malloc((mem)->cap * sizeof(type)); \
-    if ((mem)->buf == NULL) {                       \
-        perror("malloc failed");                    \
-        exit(1);                                    \
-    }                                               \
-} while (0)
-
-#define MEM_GROW(mem, type)                                          \
-do {                                                                 \
-    if ((mem)->size == (mem)->cap) {                                 \
-        (mem)->cap *= 2;                                             \
-        (mem)->buf = realloc((mem)->buf, (mem)->cap * sizeof(type)); \
-        if ((mem)->buf == NULL) {                                    \
-            perror("realloc failed");                                \
-            exit(1);                                                 \
-        }                                                            \
-    }                                                                \
-} while (0)
+#include "../mem/mem.h"
 
 struct input_t {
     size_t size;
@@ -89,7 +68,7 @@ void unix_error(char *msg)
 
 void put_char(struct input_t *input, char ch)
 {
-    MEM_GROW(input, char);
+    memgrow((struct mem *) input, sizeof(char));
     input->buf[input->size++] = ch;
 }
 
@@ -110,7 +89,7 @@ void put_arg(struct argv_t *argv, char *start, size_t len)
 {
     char *arg;
 
-    MEM_GROW(argv, char *);
+    memgrow((struct mem *) argv, sizeof(char *));
 
     if (start == NULL) {
         argv->buf[argv->size++] = NULL;
@@ -179,7 +158,7 @@ struct job_t *put_job(pid_t pid, char *name, int isbg)
     }
 
     if (job == NULL) {
-        MEM_GROW(&joblist, struct job_t);
+        memgrow((struct mem *) &joblist, sizeof(struct job_t));
         job = joblist.buf + joblist.size;
         joblist.size++;
     }
@@ -444,9 +423,9 @@ int main(void)
     set_sighandler(SIGTSTP, sigtstp_handler);
 
     // @Leak(art): let OS free it
-    MEM_ALLOC(&input, 50, char);
-    MEM_ALLOC(&cmd.argv, 5, char *);
-    MEM_ALLOC(&joblist, 10, struct job_t);
+    meminit((struct mem *) &input, sizeof(char), 50);
+    meminit((struct mem *) &cmd.argv, sizeof(char *), 5);
+    meminit((struct mem *) &joblist, sizeof(struct job_t), 10);
 
     for (;;) {
         printf("tsh> ");
