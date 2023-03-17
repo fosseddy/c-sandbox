@@ -3,8 +3,16 @@
 
 #include "mem.h"
 
-int meminit(struct mem *mem, size_t datasize, size_t cap)
+struct mem {
+    size_t size;
+    size_t cap;
+    void *buf;
+};
+
+int meminit(void *ptr, size_t datasize, size_t cap)
 {
+    struct mem *mem = ptr;
+
     if (cap == 0) {
         cap = 8;
     }
@@ -21,8 +29,10 @@ int meminit(struct mem *mem, size_t datasize, size_t cap)
     return 1;
 }
 
-int memgrow(struct mem *mem, size_t datasize)
+int memgrow(void *ptr, size_t datasize)
 {
+    struct mem *mem = ptr;
+
     if (mem->size == mem->cap) {
         void *newbuf;
         size_t newcap = mem->cap * 2;
@@ -38,4 +48,10 @@ int memgrow(struct mem *mem, size_t datasize)
     }
 
     return 1;
+}
+
+void memfree(void *ptr)
+{
+    struct mem *mem = ptr;
+    free(mem->buf);
 }

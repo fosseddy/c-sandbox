@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#include "../mem/mem.h"
+#include "mem.h"
 
 struct input_t {
     size_t size;
@@ -68,7 +68,7 @@ void unix_error(char *msg)
 
 void put_char(struct input_t *input, char ch)
 {
-    memgrow((struct mem *) input, sizeof(char));
+    memgrow(input, sizeof(char));
     input->buf[input->size++] = ch;
 }
 
@@ -89,7 +89,7 @@ void put_arg(struct argv_t *argv, char *start, size_t len)
 {
     char *arg;
 
-    memgrow((struct mem *) argv, sizeof(char *));
+    memgrow(argv, sizeof(char *));
 
     if (start == NULL) {
         argv->buf[argv->size++] = NULL;
@@ -158,7 +158,7 @@ struct job_t *put_job(pid_t pid, char *name, int isbg)
     }
 
     if (job == NULL) {
-        memgrow((struct mem *) &joblist, sizeof(struct job_t));
+        memgrow(&joblist, sizeof(struct job_t));
         job = joblist.buf + joblist.size;
         joblist.size++;
     }
@@ -423,9 +423,9 @@ int main(void)
     set_sighandler(SIGTSTP, sigtstp_handler);
 
     // @Leak(art): let OS free it
-    meminit((struct mem *) &input, sizeof(char), 50);
-    meminit((struct mem *) &cmd.argv, sizeof(char *), 5);
-    meminit((struct mem *) &joblist, sizeof(struct job_t), 10);
+    meminit(&input, sizeof(char), 50);
+    meminit(&cmd.argv, sizeof(char *), 5);
+    meminit(&joblist, sizeof(struct job_t), 10);
 
     for (;;) {
         printf("tsh> ");
