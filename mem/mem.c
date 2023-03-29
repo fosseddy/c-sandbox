@@ -3,12 +3,6 @@
 
 #include "mem.h"
 
-struct mem {
-    size_t size;
-    size_t cap;
-    void *buf;
-};
-
 int meminit(void *ptr, size_t datasize, size_t cap)
 {
     struct mem *mem = ptr;
