@@ -3,19 +3,20 @@
 
 #include "mem.h"
 
-int meminit(void *ptr, size_t datasize, size_t cap)
-{
-    struct mem *mem = ptr;
+enum { INIT_CAP = 8 };
 
+int meminit(struct mem *m, unsigned long data_size, unsigned long cap)
+{
     if (cap == 0) {
-        cap = 8;
+        cap = INIT_CAP;
     }
 
-    mem->size = 0;
-    mem->cap = cap;
+    m->size = 0;
+    m->cap = cap;
+    m->data_size = data_size;
 
-    mem->buf = malloc(mem->cap * datasize);
-    if (mem->buf == NULL) {
+    m->buf = malloc(m->cap * m->data_size);
+    if (m->buf == NULL) {
         perror("meminit malloc");
         return 0;
     }
@@ -23,29 +24,30 @@ int meminit(void *ptr, size_t datasize, size_t cap)
     return 1;
 }
 
-int memgrow(void *ptr, size_t datasize)
+int memgrow(struct mem *m)
 {
-    struct mem *mem = ptr;
-
-    if (mem->size == mem->cap) {
+    if (m->size >= m->cap) {
         void *newbuf;
-        size_t newcap = mem->cap * 2;
+        unsigned long newcap = m->cap * 2;
 
-        newbuf = realloc(mem->buf, newcap * datasize);
+        while (newcap < m->size) {
+            newcap *= 2;
+        }
+
+        newbuf = realloc(m->buf, newcap * m->data_size);
         if (newbuf == NULL) {
             perror("memgrow malloc");
             return 0;
         }
 
-        mem->cap = newcap;
-        mem->buf = newbuf;
+        m->cap = newcap;
+        m->buf = newbuf;
     }
 
     return 1;
 }
 
-void memfree(void *ptr)
+void memfree(struct mem *m)
 {
-    struct mem *mem = ptr;
-    free(mem->buf);
+    free(m->buf);
 }
