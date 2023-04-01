@@ -47,6 +47,18 @@ int memgrow(struct mem *m)
     return 1;
 }
 
+void *memnext(struct mem *m)
+{
+    void *item;
+    unsigned char *bytes = m->buf;
+
+    memgrow(m);
+    item = bytes + m->size * m->data_size;
+    m->size++;
+
+    return item;
+}
+
 void memfree(struct mem *m)
 {
     free(m->buf);
