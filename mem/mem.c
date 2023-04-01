@@ -50,9 +50,11 @@ int memgrow(struct mem *m)
 void *memnext(struct mem *m)
 {
     void *item;
-    unsigned char *bytes = m->buf;
+    unsigned char *bytes;
 
     memgrow(m);
+
+    bytes = m->buf;
     item = bytes + m->size * m->data_size;
     m->size++;
 
