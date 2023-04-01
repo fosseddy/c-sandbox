@@ -5,7 +5,7 @@
 
 enum { INIT_CAP = 8 };
 
-int meminit(struct mem *m, unsigned long data_size, unsigned long cap)
+int meminit(struct mem *m, int data_size, int cap)
 {
     if (cap == 0) {
         cap = INIT_CAP;
@@ -28,7 +28,7 @@ int memgrow(struct mem *m)
 {
     if (m->size >= m->cap) {
         void *newbuf;
-        unsigned long newcap = m->cap * 2;
+        int newcap = m->cap * 2;
 
         while (newcap < m->size) {
             newcap *= 2;
