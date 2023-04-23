@@ -2,14 +2,13 @@
 
 void bubble_s(int *arr, int len)
 {
-    // 6, 2, 9, 0, 5, 1, 8
-    for (int i = 0; i < len; ++i) {
-        for (int j = i + 1; j < len; ++j) {
-            if (arr[i] > arr[j]) {
-                int tmp = arr[i];
+    for (int i = 0; i < len - 1; ++i) {
+        for (int j = 0; j < len - 1 - i; ++j) {
+            if (arr[j] > arr[j + 1]) {
+                int tmp = arr[j];
 
-                arr[i] = arr[j];
-                arr[j] = tmp;
+                arr[j] = arr[j + 1];
+                arr[j + 1] = tmp;
             }
         }
     }
@@ -17,7 +16,7 @@ void bubble_s(int *arr, int len)
 
 void print_arr(int *arr, int len)
 {
-    printf("{");
+    printf("{ ");
 
     for (int i = 0; i < len; ++i) {
         printf("%d ", arr[i]);
